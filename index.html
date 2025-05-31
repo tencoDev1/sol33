@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>File Uploader</title>
+    <title>Photo Uploader</title>
     <style>
         * {
             margin: 0;
@@ -114,57 +114,142 @@
             color: #7f8c8d;
             margin-bottom: 20px;
         }
+
+        /* Añadir estos estilos adicionales */
+        #cameraContainer {
+            margin: 20px auto;
+            max-width: 640px;
+            text-align: center;
+        }
+
+        #videoElement {
+            width: 100%;
+            max-width: 640px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+
+        .camera-btn {
+            background-color: #e74c3c;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            margin: 10px;
+        }
+
+        .camera-btn:hover {
+            background-color: #c0392b;
+            transform: translateY(-2px);
+        }
+
+        .timestamp {
+            color: #7f8c8d;
+            font-size: 12px;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📁 File Uploader</h1>
-        <form id="uploadForm">
-            <div class="upload-icon">📤</div>
-            <p class="upload-text">Drag and drop files here or click to upload</p>
-            <input type="file" id="fileInput" multiple accept="image/*,application/pdf">
-            <button type="button" class="upload-btn" onclick="document.getElementById('fileInput').click()">
-                Choose Files
-            </button>
-            <button type="submit" class="upload-btn">Upload Files</button>
-        </form>
+        <h1>📸 Photo Uploader</h1>
+        
+        <!-- Contenedor de la cámara -->
+        <div id="cameraContainer">
+            <video id="videoElement" autoplay playsinline></video>
+            <button id="captureBtn" class="camera-btn">📸 Take Photo</button>
+        </div>
+
         <div class="preview-container" id="previewContainer"></div>
     </div>
 
     <script>
-        document.getElementById('uploadForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const files = document.getElementById('fileInput').files;
-            const previewContainer = document.getElementById('previewContainer');
+        // Inicializar la cámara
+        async function initCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                const video = document.getElementById('videoElement');
+                video.srcObject = stream;
+            } catch (err) {
+                console.error('Error accessing camera:', err);
+                alert('Error accessing camera. Please make sure you have granted camera permissions.');
+            }
+        }
+
+        // Capturar foto
+        document.getElementById('captureBtn').addEventListener('click', function() {
+            const video = document.getElementById('videoElement');
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
             
-            for(let file of files) {
+            // Capturar frame del video
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            
+            // Convertir a imagen
+            const imageData = canvas.toDataURL('image/jpeg');
+            
+            // Crear preview
+            const fileDiv = document.createElement('div');
+            fileDiv.className = 'file-preview';
+            
+            const img = document.createElement('img');
+            img.src = imageData;
+            
+            const timestamp = new Date();
+            const fileName = document.createElement('div');
+            fileName.className = 'file-name';
+            fileName.textContent = `Photo_${timestamp.toISOString().slice(0,10)}`;
+            
+            const timeInfo = document.createElement('div');
+            timeInfo.className = 'timestamp';
+            timeInfo.textContent = timestamp.toLocaleTimeString();
+            
+            fileDiv.appendChild(img);
+            fileDiv.appendChild(fileName);
+            fileDiv.appendChild(timeInfo);
+            
+            document.getElementById('previewContainer').appendChild(fileDiv);
+            
+            // Guardar en localStorage
+            const savedPhotos = JSON.parse(localStorage.getItem('photos') || '[]');
+            savedPhotos.push({
+                data: imageData,
+                name: fileName.textContent,
+                timestamp: timestamp.toISOString()
+            });
+            localStorage.setItem('photos', JSON.stringify(savedPhotos));
+        });
+
+        // Cargar fotos guardadas al iniciar
+        window.addEventListener('load', function() {
+            initCamera();
+            
+            const savedPhotos = JSON.parse(localStorage.getItem('photos') || '[]');
+            savedPhotos.forEach(photo => {
                 const fileDiv = document.createElement('div');
                 fileDiv.className = 'file-preview';
                 
                 const img = document.createElement('img');
-                
-                if(file.type.startsWith('image/')) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        img.src = e.target.result;
-                    }
-                    reader.readAsDataURL(file);
-                } else {
-                    // Para archivos PDF u otros, mostrar un icono por defecto
-                    img.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTQgMkg2YTIgMiAwIDAgMC0yIDJ2MTZhMiAyIDAgMCAwIDIgMmgxMmEyIDIgMCAwIDAgMi0yVjh6Ii8+PHBvbHlsaW5lIHBvaW50cz0iMTQgMiAxNCA4IDIwIDgiLz48L3N2Zz4=';
-                }
+                img.src = photo.data;
                 
                 const fileName = document.createElement('div');
                 fileName.className = 'file-name';
-                fileName.textContent = file.name;
+                fileName.textContent = photo.name;
+                
+                const timeInfo = document.createElement('div');
+                timeInfo.className = 'timestamp';
+                timeInfo.textContent = new Date(photo.timestamp).toLocaleTimeString();
                 
                 fileDiv.appendChild(img);
                 fileDiv.appendChild(fileName);
-                previewContainer.appendChild(fileDiv);
-            }
-            
-            // Limpiar el input
-            this.reset();
+                fileDiv.appendChild(timeInfo);
+                
+                document.getElementById('previewContainer').appendChild(fileDiv);
+            });
         });
     </script>
 </body>
