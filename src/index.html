@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Uploader</title>
+    <style>
+        .preview-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            padding: 20px;
+        }
+        .file-preview {
+            width: 150px;
+            text-align: center;
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+        .file-preview img {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            margin-bottom: 10px;
+        }
+        .file-name {
+            word-break: break-all;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Upload Your Documents and Photos</h1>
+    <form id="uploadForm">
+        <input type="file" id="fileInput" multiple accept="image/*,application/pdf">
+        <button type="submit">Upload</button>
+    </form>
+    <div class="preview-container" id="previewContainer"></div>
+
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const files = document.getElementById('fileInput').files;
+            const previewContainer = document.getElementById('previewContainer');
+            
+            for(let file of files) {
+                const fileDiv = document.createElement('div');
+                fileDiv.className = 'file-preview';
+                
+                const img = document.createElement('img');
+                
+                if(file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        img.src = e.target.result;
+                    }
+                    reader.readAsDataURL(file);
+                } else {
+                    // Para archivos PDF u otros, mostrar un icono por defecto
+                    img.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTQgMkg2YTIgMiAwIDAgMC0yIDJ2MTZhMiAyIDAgMCAwIDIgMmgxMmEyIDIgMCAwIDAgMi0yVjh6Ii8+PHBvbHlsaW5lIHBvaW50cz0iMTQgMiAxNCA4IDIwIDgiLz48L3N2Zz4=';
+                }
+                
+                const fileName = document.createElement('div');
+                fileName.className = 'file-name';
+                fileName.textContent = file.name;
+                
+                fileDiv.appendChild(img);
+                fileDiv.appendChild(fileName);
+                previewContainer.appendChild(fileDiv);
+            }
+            
+            // Limpiar el input
+            this.reset();
+        });
+    </script>
+</body>
+</html>
