@@ -15,45 +15,80 @@ async function initCamera(facingMode = 'user') {
             throw new Error('Tu navegador no soporta acceso a la cámara');
         }
 
-        currentStream = await navigator.mediaDevices.getUserMedia({
+        // Modificar las constraints para forzar el cambio de cámara
+        const constraints = {
             video: {
-                facingMode: facingMode,
+                facingMode: { exact: facingMode }, // Usar exact para forzar el modo
                 width: { ideal: 1280 },
                 height: { ideal: 720 }
             }
-        });
+        };
 
+        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
         video.srcObject = currentStream;
         await video.play();
         captureBtn.disabled = false;
         currentFacingMode = facingMode;
 
+        // Actualizar el texto del botón según la cámara activa
+        const switchBtn = document.getElementById('switchCameraBtn');
+        if (switchBtn) {
+            switchBtn.textContent = facingMode === 'user' ? '🔄 Usar Cámara Trasera' : '🔄 Usar Cámara Frontal';
+        }
+
     } catch (err) {
         console.error('Error detallado:', err);
         
-        let errorMessage = 'Error al acceder a la cámara. ';
-        
-        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-            errorMessage += 'Has denegado el permiso para usar la cámara.';
-        } else if (err.name === 'NotFoundError') {
-            errorMessage += 'No se encontró ninguna cámara en tu dispositivo.';
-        } else if (err.name === 'NotReadableError') {
-            errorMessage += 'Tu cámara está siendo usada por otra aplicación.';
+        // Si falla con exact, intentar sin exact
+        if (err.name === 'OverconstrainedError') {
+            try {
+                const constraints = {
+                    video: {
+                        facingMode: facingMode,
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                };
+                currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = currentStream;
+                await video.play();
+                captureBtn.disabled = false;
+                currentFacingMode = facingMode;
+            } catch (retryErr) {
+                handleCameraError(retryErr);
+            }
         } else {
-            errorMessage += err.message;
+            handleCameraError(err);
         }
-
-        const cameraContainer = document.getElementById('cameraContainer');
-        cameraContainer.innerHTML = `
-            <div style="color: #e74c3c; padding: 20px; text-align: center;">
-                <h3>❌ Error de Cámara</h3>
-                <p>${errorMessage}</p>
-                <button onclick="retryCamera()" class="camera-btn">
-                    🔄 Reintentar
-                </button>
-            </div>
-        `;
     }
+}
+
+// Añadir función para manejar errores
+function handleCameraError(err) {
+    let errorMessage = 'Error al acceder a la cámara. ';
+    
+    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        errorMessage += 'Has denegado el permiso para usar la cámara.';
+    } else if (err.name === 'NotFoundError') {
+        errorMessage += 'No se encontró ninguna cámara en tu dispositivo.';
+    } else if (err.name === 'NotReadableError') {
+        errorMessage += 'Tu cámara está siendo usada por otra aplicación.';
+    } else if (err.name === 'OverconstrainedError') {
+        errorMessage += 'No se pudo cambiar la cámara. Tu dispositivo puede no tener cámara trasera.';
+    } else {
+        errorMessage += err.message;
+    }
+
+    const cameraContainer = document.getElementById('cameraContainer');
+    cameraContainer.innerHTML = `
+        <div style="color: #e74c3c; padding: 20px; text-align: center;">
+            <h3>❌ Error de Cámara</h3>
+            <p>${errorMessage}</p>
+            <button onclick="retryCamera()" class="camera-btn">
+                🔄 Reintentar
+            </button>
+        </div>
+    `;
 }
 
 function retryCamera() {
@@ -70,14 +105,28 @@ function retryCamera() {
 }
 
 function setupEventListeners() {
-    // Evento para cambiar de cámara
-    document.getElementById('switchCameraBtn').addEventListener('click', async () => {
-        const newFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
-        await initCamera(newFacingMode);
-    });
+    const switchBtn = document.getElementById('switchCameraBtn');
+    const captureBtn = document.getElementById('captureBtn');
 
-    // Evento para capturar foto
-    document.getElementById('captureBtn').addEventListener('click', capturePhoto);
+    if (switchBtn) {
+        // Eliminar listeners anteriores
+        switchBtn.replaceWith(switchBtn.cloneNode(true));
+        const newSwitchBtn = document.getElementById('switchCameraBtn');
+        
+        newSwitchBtn.addEventListener('click', async () => {
+            try {
+                const newFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+                await initCamera(newFacingMode);
+            } catch (err) {
+                console.error('Error al cambiar cámara:', err);
+                handleCameraError(err);
+            }
+        });
+    }
+
+    if (captureBtn) {
+        captureBtn.addEventListener('click', capturePhoto);
+    }
 }
 
 function capturePhoto() {
