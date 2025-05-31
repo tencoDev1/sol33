@@ -160,23 +160,80 @@
         <!-- Contenedor de la cámara -->
         <div id="cameraContainer">
             <video id="videoElement" autoplay playsinline></video>
-            <button id="captureBtn" class="camera-btn">📸 Take Photo</button>
+            <button id="captureBtn" class="camera-btn" disabled>📸 Take Photo</button>
         </div>
 
         <div class="preview-container" id="previewContainer"></div>
     </div>
 
     <script>
-        // Inicializar la cámara
+        // Inicializar la cámara con mejor manejo de errores
         async function initCamera() {
+            const video = document.getElementById('videoElement');
+            const captureBtn = document.getElementById('captureBtn');
+
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                const video = document.getElementById('videoElement');
+                // Primero verificamos si el navegador soporta getUserMedia
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error('Tu navegador no soporta acceso a la cámara');
+                }
+
+                // Intentamos obtener acceso a la cámara con configuraciones específicas
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'user', // cámara frontal
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                });
+
+                // Asignamos el stream al video
                 video.srcObject = stream;
+                
+                // Esperamos a que el video esté listo
+                await video.play();
+                
+                // Habilitamos el botón de captura
+                captureBtn.disabled = false;
+
             } catch (err) {
-                console.error('Error accessing camera:', err);
-                alert('Error accessing camera. Please make sure you have granted camera permissions.');
+                console.error('Error detallado:', err);
+                
+                let errorMessage = 'Error al acceder a la cámara. ';
+                
+                // Mensajes específicos según el error
+                if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                    errorMessage += 'Has denegado el permiso para usar la cámara. Por favor, actualiza la página y acepta los permisos.';
+                } else if (err.name === 'NotFoundError') {
+                    errorMessage += 'No se encontró ninguna cámara en tu dispositivo.';
+                } else if (err.name === 'NotReadableError') {
+                    errorMessage += 'Tu cámara está siendo usada por otra aplicación.';
+                } else {
+                    errorMessage += err.message || 'Verifica que tu cámara esté conectada y los permisos estén habilitados.';
+                }
+
+                // Mostramos el error en la interfaz
+                const cameraContainer = document.getElementById('cameraContainer');
+                cameraContainer.innerHTML = `
+                    <div style="color: #e74c3c; padding: 20px; text-align: center;">
+                        <h3>❌ Error de Cámara</h3>
+                        <p>${errorMessage}</p>
+                        <button onclick="retryCamera()" class="camera-btn" style="margin-top: 10px;">
+                            🔄 Reintentar
+                        </button>
+                    </div>
+                `;
             }
+        }
+
+        // Función para reintentar la conexión con la cámara
+        function retryCamera() {
+            const cameraContainer = document.getElementById('cameraContainer');
+            cameraContainer.innerHTML = `
+                <video id="videoElement" autoplay playsinline></video>
+                <button id="captureBtn" class="camera-btn" disabled>📸 Take Photo</button>
+            `;
+            initCamera();
         }
 
         // Capturar foto
@@ -225,7 +282,7 @@
         });
 
         // Cargar fotos guardadas al iniciar
-        window.addEventListener('load', function() {
+        window.addEventListener('DOMContentLoaded', function() {
             initCamera();
             
             const savedPhotos = JSON.parse(localStorage.getItem('photos') || '[]');
