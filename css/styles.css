@@ -48,6 +48,22 @@ input[type="file"] {
     vertical-align: top;
 }
 
+/* Añade esto dentro de tu bloque <style> */
+.camera-controls {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+#switchCameraBtn {
+    background-color: #2ecc71;
+}
+
+#switchCameraBtn:hover {
+    background-color: #27ae60;
+}
+
 .file-icon {
     width: 64px;
     height: 64px;

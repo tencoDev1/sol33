@@ -5,61 +5,34 @@ async function initCamera(facingMode = 'user') {
     const video = document.getElementById('videoElement');
     const captureBtn = document.getElementById('captureBtn');
     
-    // Si hay un stream activo, detenerlo
-    if (currentStream) {
-        currentStream.getTracks().forEach(track => track.stop());
-    }
-
     try {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            throw new Error('Tu navegador no soporta acceso a la cámara');
+        // Detener cualquier stream activo
+        if (currentStream) {
+            currentStream.getTracks().forEach(track => track.stop());
         }
 
-        // Modificar las constraints para forzar el cambio de cámara
-        const constraints = {
+        // Intentar obtener el stream con la cámara solicitada
+        currentStream = await navigator.mediaDevices.getUserMedia({
             video: {
-                facingMode: { exact: facingMode }, // Usar exact para forzar el modo
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
+                facingMode: { ideal: facingMode }
             }
-        };
+        });
 
-        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
         video.srcObject = currentStream;
-        await video.play();
         captureBtn.disabled = false;
         currentFacingMode = facingMode;
 
-        // Actualizar el texto del botón según la cámara activa
+        // Actualizar texto del botón
         const switchBtn = document.getElementById('switchCameraBtn');
         if (switchBtn) {
-            switchBtn.textContent = facingMode === 'user' ? '🔄 Usar Cámara Trasera' : '🔄 Usar Cámara Frontal';
+            switchBtn.textContent = currentFacingMode === 'user' ? 
+                '🔄 Cambiar a Cámara Trasera' : 
+                '🔄 Cambiar a Cámara Frontal';
         }
 
     } catch (err) {
-        console.error('Error detallado:', err);
-        
-        // Si falla con exact, intentar sin exact
-        if (err.name === 'OverconstrainedError') {
-            try {
-                const constraints = {
-                    video: {
-                        facingMode: facingMode,
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
-                    }
-                };
-                currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-                video.srcObject = currentStream;
-                await video.play();
-                captureBtn.disabled = false;
-                currentFacingMode = facingMode;
-            } catch (retryErr) {
-                handleCameraError(retryErr);
-            }
-        } else {
-            handleCameraError(err);
-        }
+        console.error('Error al iniciar cámara:', err);
+        handleCameraError(err);
     }
 }
 
@@ -105,25 +78,18 @@ function retryCamera() {
 }
 
 function setupEventListeners() {
+    // Configurar el botón de cambio de cámara
     const switchBtn = document.getElementById('switchCameraBtn');
-    const captureBtn = document.getElementById('captureBtn');
-
     if (switchBtn) {
-        // Eliminar listeners anteriores
-        switchBtn.replaceWith(switchBtn.cloneNode(true));
-        const newSwitchBtn = document.getElementById('switchCameraBtn');
-        
-        newSwitchBtn.addEventListener('click', async () => {
-            try {
-                const newFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
-                await initCamera(newFacingMode);
-            } catch (err) {
-                console.error('Error al cambiar cámara:', err);
-                handleCameraError(err);
-            }
+        switchBtn.addEventListener('click', () => {
+            // Cambiar entre cámaras
+            const newMode = currentFacingMode === 'user' ? 'environment' : 'user';
+            initCamera(newMode);
         });
     }
 
+    // Configurar el botón de captura
+    const captureBtn = document.getElementById('captureBtn');
     if (captureBtn) {
         captureBtn.addEventListener('click', capturePhoto);
     }
@@ -175,7 +141,7 @@ function capturePhoto() {
 
 // Inicializar cuando el documento esté listo
 document.addEventListener('DOMContentLoaded', () => {
-    initCamera();
+    initCamera('user'); // Comenzar con la cámara frontal
     setupEventListeners();
     
     // Cargar fotos guardadas
