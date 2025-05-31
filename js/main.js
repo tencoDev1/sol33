@@ -1,84 +1,155 @@
-document.addEventListener('DOMContentLoaded', () => {
-    const fileInput = document.getElementById('file-input');
-    const uploadButton = document.getElementById('upload-button');
-    const previewContainer = document.getElementById('preview-container');
+let currentFacingMode = 'user';
+let currentStream = null;
 
-    uploadButton.addEventListener('click', () => {
-        const files = fileInput.files;
-        previewContainer.innerHTML = '';
+async function initCamera(facingMode = 'user') {
+    const video = document.getElementById('videoElement');
+    const captureBtn = document.getElementById('captureBtn');
+    
+    // Si hay un stream activo, detenerlo
+    if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+    }
 
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            const reader = new FileReader();
-
-            reader.onload = (function(file) {
-                return function(e) {
-                    const div = document.createElement('div');
-                    div.classList.add('file-preview');
-
-                    if (file.type.startsWith('image/')) {
-                        const img = document.createElement('img');
-                        img.src = e.target.result;
-                        img.alt = file.name;
-                        div.appendChild(img);
-                    } else {
-                        const p = document.createElement('p');
-                        p.textContent = `Uploaded file: ${file.name}`;
-                        div.appendChild(p);
-                    }
-
-                    previewContainer.appendChild(div);
-                };
-            })(file);
-
-            reader.readAsDataURL(file);
+    try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error('Tu navegador no soporta acceso a la cámara');
         }
+
+        currentStream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: facingMode,
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            }
+        });
+
+        video.srcObject = currentStream;
+        await video.play();
+        captureBtn.disabled = false;
+        currentFacingMode = facingMode;
+
+    } catch (err) {
+        console.error('Error detallado:', err);
+        
+        let errorMessage = 'Error al acceder a la cámara. ';
+        
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+            errorMessage += 'Has denegado el permiso para usar la cámara.';
+        } else if (err.name === 'NotFoundError') {
+            errorMessage += 'No se encontró ninguna cámara en tu dispositivo.';
+        } else if (err.name === 'NotReadableError') {
+            errorMessage += 'Tu cámara está siendo usada por otra aplicación.';
+        } else {
+            errorMessage += err.message;
+        }
+
+        const cameraContainer = document.getElementById('cameraContainer');
+        cameraContainer.innerHTML = `
+            <div style="color: #e74c3c; padding: 20px; text-align: center;">
+                <h3>❌ Error de Cámara</h3>
+                <p>${errorMessage}</p>
+                <button onclick="retryCamera()" class="camera-btn">
+                    🔄 Reintentar
+                </button>
+            </div>
+        `;
+    }
+}
+
+function retryCamera() {
+    const cameraContainer = document.getElementById('cameraContainer');
+    cameraContainer.innerHTML = `
+        <video id="videoElement" autoplay playsinline></video>
+        <div class="camera-controls">
+            <button id="captureBtn" class="camera-btn" disabled>📸 Take Photo</button>
+            <button id="switchCameraBtn" class="camera-btn">🔄 Switch Camera</button>
+        </div>
+    `;
+    initCamera(currentFacingMode);
+    setupEventListeners();
+}
+
+function setupEventListeners() {
+    // Evento para cambiar de cámara
+    document.getElementById('switchCameraBtn').addEventListener('click', async () => {
+        const newFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+        await initCamera(newFacingMode);
     });
 
-    document.getElementById('uploadForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const files = document.getElementById('fileInput').files;
-        const previewContainer = document.getElementById('filePreview');
+    // Evento para capturar foto
+    document.getElementById('captureBtn').addEventListener('click', capturePhoto);
+}
+
+function capturePhoto() {
+    const video = document.getElementById('videoElement');
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    // Capturar frame del video
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    
+    // Convertir a imagen
+    const imageData = canvas.toDataURL('image/jpeg');
+    
+    // Crear preview
+    const fileDiv = document.createElement('div');
+    fileDiv.className = 'file-preview';
+    
+    const img = document.createElement('img');
+    img.src = imageData;
+    
+    const timestamp = new Date();
+    const fileName = document.createElement('div');
+    fileName.className = 'file-name';
+    fileName.textContent = `Photo_${timestamp.toISOString().slice(0,10)}`;
+    
+    const timeInfo = document.createElement('div');
+    timeInfo.className = 'timestamp';
+    timeInfo.textContent = timestamp.toLocaleTimeString();
+    
+    fileDiv.appendChild(img);
+    fileDiv.appendChild(fileName);
+    fileDiv.appendChild(timeInfo);
+    
+    document.getElementById('previewContainer').appendChild(fileDiv);
+    
+    // Guardar en localStorage
+    const savedPhotos = JSON.parse(localStorage.getItem('photos') || '[]');
+    savedPhotos.push({
+        data: imageData,
+        name: fileName.textContent,
+        timestamp: timestamp.toISOString()
+    });
+    localStorage.setItem('photos', JSON.stringify(savedPhotos));
+}
+
+// Inicializar cuando el documento esté listo
+document.addEventListener('DOMContentLoaded', () => {
+    initCamera();
+    setupEventListeners();
+    
+    // Cargar fotos guardadas
+    const savedPhotos = JSON.parse(localStorage.getItem('photos') || '[]');
+    savedPhotos.forEach(photo => {
+        const fileDiv = document.createElement('div');
+        fileDiv.className = 'file-preview';
         
-        for(let file of files) {
-            const fileItem = document.createElement('div');
-            fileItem.className = 'file-item';
-            
-            // Create icon/preview container
-            const iconContainer = document.createElement('div');
-            
-            if (file.type.startsWith('image/')) {
-                // For images, create an actual preview
-                const img = document.createElement('img');
-                img.className = 'image-preview';
-                const reader = new FileReader();
-                
-                reader.onload = function(e) {
-                    img.src = e.target.result;
-                }
-                
-                reader.readAsDataURL(file);
-                iconContainer.appendChild(img);
-            } else if (file.type === 'application/pdf') {
-                // For PDFs, show PDF icon
-                iconContainer.className = 'file-icon pdf-icon';
-            } else {
-                // For other files, show generic file icon
-                iconContainer.className = 'file-icon';
-                iconContainer.style.backgroundImage = 'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 384 512\'><path fill=\'gray\' d=\'M224 136V0H24C10.7 0 0 10.7 0 24v464c0 13.3 10.7 24 24 24h336c13.3 0 24-10.7 24-24V160H248c-13.2 0-24-10.8-24-24zm160-14.1v6.1H256V0h6.1c6.4 0 12.5 2.5 17 7l97.9 98c4.5 4.5 7 10.6 7 16.9z\'/></svg>")';
-            }
-            
-            // Add filename below icon
-            const fileName = document.createElement('div');
-            fileName.className = 'file-name';
-            fileName.textContent = file.name;
-            
-            fileItem.appendChild(iconContainer);
-            fileItem.appendChild(fileName);
-            previewContainer.appendChild(fileItem);
-        }
+        const img = document.createElement('img');
+        img.src = photo.data;
         
-        // Clear the file input
-        document.getElementById('fileInput').value = '';
+        const fileName = document.createElement('div');
+        fileName.className = 'file-name';
+        fileName.textContent = photo.name;
+        
+        const timeInfo = document.createElement('div');
+        timeInfo.className = 'timestamp';
+        timeInfo.textContent = new Date(photo.timestamp).toLocaleTimeString();
+        
+        fileDiv.appendChild(img);
+        fileDiv.appendChild(fileName);
+        fileDiv.appendChild(timeInfo);
+        
+        document.getElementById('previewContainer').appendChild(fileDiv);
     });
 });

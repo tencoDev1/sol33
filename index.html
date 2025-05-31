@@ -151,6 +151,10 @@
             font-size: 12px;
             margin-top: 5px;
         }
+
+        .camera-controls {
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -160,7 +164,10 @@
         <!-- Contenedor de la cámara -->
         <div id="cameraContainer">
             <video id="videoElement" autoplay playsinline></video>
-            <button id="captureBtn" class="camera-btn" disabled>📸 Take Photo</button>
+            <div class="camera-controls">
+                <button id="captureBtn" class="camera-btn" disabled>📸 Take Photo</button>
+                <button id="switchCameraBtn" class="camera-btn">🔄 Switch Camera</button>
+            </div>
         </div>
 
         <div class="preview-container" id="previewContainer"></div>
@@ -231,7 +238,10 @@
             const cameraContainer = document.getElementById('cameraContainer');
             cameraContainer.innerHTML = `
                 <video id="videoElement" autoplay playsinline></video>
-                <button id="captureBtn" class="camera-btn" disabled>📸 Take Photo</button>
+                <div class="camera-controls">
+                    <button id="captureBtn" class="camera-btn" disabled>📸 Take Photo</button>
+                    <button id="switchCameraBtn" class="camera-btn">🔄 Switch Camera</button>
+                </div>
             `;
             initCamera();
         }
