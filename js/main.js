@@ -1,36 +1,33 @@
 import { supabase, signInAnonymously } from './supabase-config.js'
 
-let currentFacingMode = 'user'
-let currentStream = null
+let currentFacingMode = 'user';
+let currentStream = null;
 
 async function initCamera(facingMode = 'user') {
     const video = document.getElementById('videoElement');
     const captureBtn = document.getElementById('captureBtn');
-    
+
     try {
         // Detener cualquier stream activo
         if (currentStream) {
             currentStream.getTracks().forEach(track => track.stop());
         }
 
-        // Intentar obtener el stream con la cámara solicitada
-        currentStream = await navigator.mediaDevices.getUserMedia({
+        // Configurar la cámara
+        const constraints = {
             video: {
                 facingMode: { ideal: facingMode }
             }
-        });
+        };
 
+        // Obtener acceso a la cámara
+        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
         video.srcObject = currentStream;
+        await video.play();
+
+        // Habilitar el botón de captura
         captureBtn.disabled = false;
         currentFacingMode = facingMode;
-
-        // Actualizar texto del botón
-        const switchBtn = document.getElementById('switchCameraBtn');
-        if (switchBtn) {
-            switchBtn.textContent = currentFacingMode === 'user' ? 
-                '🔄 Cambiar a Cámara Trasera' : 
-                '🔄 Cambiar a Cámara Frontal';
-        }
 
     } catch (err) {
         console.error('Error al iniciar cámara:', err);
@@ -40,8 +37,11 @@ async function initCamera(facingMode = 'user') {
 
 // Añadir función para manejar errores
 function handleCameraError(err) {
-    const errorMessage = getErrorMessage(err);
-    alert(errorMessage);
+    const message = err.name === 'NotAllowedError' ? 
+        'Permiso de cámara denegado. Por favor, permite el acceso a la cámara.' :
+        `Error de cámara: ${err.message}`;
+    
+    alert(message);
 }
 
 function getErrorMessage(err) {
@@ -161,61 +161,39 @@ function setupEventListeners() {
     const toggleCamera = document.getElementById('toggleCamera');
     const cameraInterface = document.getElementById('cameraInterface');
     
-    toggleCamera.addEventListener('click', async () => {
-        try {
-            if (cameraInterface.style.display === 'none') {
-                await initCamera('user');
-                cameraInterface.style.display = 'block';
-                toggleCamera.textContent = '🎥 Disable Camera';
-            } else {
-                if (currentStream) {
-                    currentStream.getTracks().forEach(track => track.stop());
+    if (toggleCamera && cameraInterface) {
+        toggleCamera.addEventListener('click', async () => {
+            try {
+                if (cameraInterface.style.display === 'none') {
+                    await initCamera('user');
+                    cameraInterface.style.display = 'block';
+                    toggleCamera.textContent = '🎥 Disable Camera';
+                } else {
+                    if (currentStream) {
+                        currentStream.getTracks().forEach(track => track.stop());
+                    }
+                    cameraInterface.style.display = 'none';
+                    toggleCamera.textContent = '📸 Enable Camera';
                 }
-                cameraInterface.style.display = 'none';
-                toggleCamera.textContent = '📸 Enable Camera';
+            } catch (error) {
+                console.error('Error:', error);
+                handleCameraError(error);
             }
-        } catch (error) {
-            console.error('Error con la cámara:', error);
-            handleCameraError(error);
-        }
-    });
-
-    // Configurar el botón de cambio de cámara
-    const switchBtn = document.getElementById('switchCameraBtn');
-    if (switchBtn) {
-        switchBtn.addEventListener('click', () => {
-            // Cambiar entre cámaras
-            const newMode = currentFacingMode === 'user' ? 'environment' : 'user';
-            initCamera(newMode);
         });
     }
 
-    // Configurar el botón de captura
+    // Configurar botón de captura
     const captureBtn = document.getElementById('captureBtn');
     if (captureBtn) {
         captureBtn.addEventListener('click', capturePhoto);
     }
 
-    // Configurar input de archivo
-    const fileInput = document.getElementById('fileInput');
-    if (fileInput) {
-        fileInput.addEventListener('change', handleFileUpload);
+    // Configurar botón de cambio de cámara
+    const switchBtn = document.getElementById('switchCameraBtn');
+    if (switchBtn) {
+        switchBtn.addEventListener('click', () => {
+            const newMode = currentFacingMode === 'user' ? 'environment' : 'user';
+            initCamera(newMode);
+        });
     }
-}
-
-// Modificar handleCameraError para ser menos intrusivo
-function handleCameraError(err) {
-    const errorMessage = getErrorMessage(err);
-    alert(errorMessage);
-}
-
-function getErrorMessage(err) {
-    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        return 'Permiso de cámara denegado';
-    } else if (err.name === 'NotFoundError') {
-        return 'No se encontró cámara en el dispositivo';
-    } else if (err.name === 'NotReadableError') {
-        return 'La cámara está siendo usada por otra aplicación';
-    }
-    return `Error: ${err.message}`;
 }
