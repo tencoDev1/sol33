@@ -1,3 +1,5 @@
+import { supabase } from './supabase-config.js';
+
 let currentFacingMode = 'user';
 let currentStream = null;
 
@@ -77,6 +79,68 @@ function retryCamera() {
     setupEventListeners();
 }
 
+async function capturePhoto() {
+    const video = document.getElementById('videoElement');
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    try {
+        // Capturar frame del video
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        
+        // Convertir a blob para Supabase
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg'));
+        
+        // Crear nombre único para el archivo
+        const timestamp = new Date();
+        const fileName = `photo_${timestamp.getTime()}.jpg`;
+
+        // Subir a Supabase Storage
+        const { data, error } = await supabase.storage
+            .from('photos')
+            .upload(fileName, blob);
+
+        if (error) throw error;
+
+        // Obtener URL pública
+        const { data: { publicUrl } } = supabase.storage
+            .from('photos')
+            .getPublicUrl(fileName);
+
+        // Crear preview
+        const fileDiv = document.createElement('div');
+        fileDiv.className = 'file-preview';
+        
+        const img = document.createElement('img');
+        img.src = publicUrl;
+        
+        const fileNameDiv = document.createElement('div');
+        fileNameDiv.className = 'file-name';
+        fileNameDiv.textContent = `Photo_${timestamp.toISOString().slice(0,10)}`;
+        
+        const timeInfo = document.createElement('div');
+        timeInfo.className = 'timestamp';
+        timeInfo.textContent = timestamp.toLocaleTimeString();
+        
+        fileDiv.appendChild(img);
+        fileDiv.appendChild(fileNameDiv);
+        fileDiv.appendChild(timeInfo);
+        
+        document.getElementById('previewContainer').appendChild(fileDiv);
+
+    } catch (error) {
+        console.error('Error al subir la foto:', error);
+        alert('Error al guardar la foto. Por favor, intenta de nuevo.');
+    }
+}
+
+// Inicializar cuando el documento esté listo
+document.addEventListener('DOMContentLoaded', () => {
+    initCamera('user'); // Comenzar con la cámara frontal
+    setupEventListeners();
+});
+
 function setupEventListeners() {
     // Configurar el botón de cambio de cámara
     const switchBtn = document.getElementById('switchCameraBtn');
@@ -94,77 +158,3 @@ function setupEventListeners() {
         captureBtn.addEventListener('click', capturePhoto);
     }
 }
-
-function capturePhoto() {
-    const video = document.getElementById('videoElement');
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    
-    // Capturar frame del video
-    canvas.getContext('2d').drawImage(video, 0, 0);
-    
-    // Convertir a imagen
-    const imageData = canvas.toDataURL('image/jpeg');
-    
-    // Crear preview
-    const fileDiv = document.createElement('div');
-    fileDiv.className = 'file-preview';
-    
-    const img = document.createElement('img');
-    img.src = imageData;
-    
-    const timestamp = new Date();
-    const fileName = document.createElement('div');
-    fileName.className = 'file-name';
-    fileName.textContent = `Photo_${timestamp.toISOString().slice(0,10)}`;
-    
-    const timeInfo = document.createElement('div');
-    timeInfo.className = 'timestamp';
-    timeInfo.textContent = timestamp.toLocaleTimeString();
-    
-    fileDiv.appendChild(img);
-    fileDiv.appendChild(fileName);
-    fileDiv.appendChild(timeInfo);
-    
-    document.getElementById('previewContainer').appendChild(fileDiv);
-    
-    // Guardar en localStorage
-    const savedPhotos = JSON.parse(localStorage.getItem('photos') || '[]');
-    savedPhotos.push({
-        data: imageData,
-        name: fileName.textContent,
-        timestamp: timestamp.toISOString()
-    });
-    localStorage.setItem('photos', JSON.stringify(savedPhotos));
-}
-
-// Inicializar cuando el documento esté listo
-document.addEventListener('DOMContentLoaded', () => {
-    initCamera('user'); // Comenzar con la cámara frontal
-    setupEventListeners();
-    
-    // Cargar fotos guardadas
-    const savedPhotos = JSON.parse(localStorage.getItem('photos') || '[]');
-    savedPhotos.forEach(photo => {
-        const fileDiv = document.createElement('div');
-        fileDiv.className = 'file-preview';
-        
-        const img = document.createElement('img');
-        img.src = photo.data;
-        
-        const fileName = document.createElement('div');
-        fileName.className = 'file-name';
-        fileName.textContent = photo.name;
-        
-        const timeInfo = document.createElement('div');
-        timeInfo.className = 'timestamp';
-        timeInfo.textContent = new Date(photo.timestamp).toLocaleTimeString();
-        
-        fileDiv.appendChild(img);
-        fileDiv.appendChild(fileName);
-        fileDiv.appendChild(timeInfo);
-        
-        document.getElementById('previewContainer').appendChild(fileDiv);
-    });
-});
