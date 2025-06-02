@@ -123,16 +123,47 @@ async function capturePhoto() {
 }
 
 // Añadir esta función
-function showPreview(publicUrl, timestamp) {
+async function loadSupabaseImages() {
+    try {
+        const { data, error } = await supabase
+            .storage
+            .from('photos')
+            .list();
+
+        if (error) throw error;
+
+        for (const file of data) {
+            const { data: { publicUrl } } = supabase
+                .storage
+                .from('photos')
+                .getPublicUrl(file.name);
+
+            const timestamp = new Date(file.created_at);
+            showPreview(publicUrl, timestamp, file.name);
+        }
+    } catch (error) {
+        console.error('Error loading images:', error);
+    }
+}
+
+function showPreview(publicUrl, timestamp, fileName) {
     const fileDiv = document.createElement('div');
     fileDiv.className = 'file-preview';
     
     const img = document.createElement('img');
     img.src = publicUrl;
     
+    // Añadir funcionalidad de lightbox
+    img.addEventListener('click', () => {
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImg = document.getElementById('lightbox-img');
+        lightboxImg.src = publicUrl;
+        lightbox.style.display = 'flex';
+    });
+    
     const fileNameDiv = document.createElement('div');
     fileNameDiv.className = 'file-name';
-    fileNameDiv.textContent = `Photo_${timestamp.toLocaleDateString()}`;
+    fileNameDiv.textContent = fileName || `Photo_${timestamp.toLocaleDateString()}`;
     
     const timeInfo = document.createElement('div');
     timeInfo.className = 'timestamp';
@@ -143,17 +174,24 @@ function showPreview(publicUrl, timestamp) {
     fileDiv.appendChild(timeInfo);
     
     const previewContainer = document.getElementById('previewContainer');
-    if (!previewContainer) {
-        console.error('Container de preview no encontrado');
-        return;
-    }
-    
     previewContainer.appendChild(fileDiv);
 }
 
 // Inicializar cuando el documento esté listo
 document.addEventListener('DOMContentLoaded', () => {
+    loadSupabaseImages();
     setupEventListeners();
+});
+
+// Eventos del lightbox
+document.querySelector('.close-lightbox')?.addEventListener('click', () => {
+    document.getElementById('lightbox').style.display = 'none';
+});
+
+document.getElementById('lightbox')?.addEventListener('click', (e) => {
+    if (e.target.id === 'lightbox') {
+        e.target.style.display = 'none';
+    }
 });
 
 function setupEventListeners() {
