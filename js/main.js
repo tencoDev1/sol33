@@ -40,30 +40,19 @@ async function initCamera(facingMode = 'user') {
 
 // Añadir función para manejar errores
 function handleCameraError(err) {
-    let errorMessage = 'Error al acceder a la cámara. ';
-    
-    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        errorMessage += 'Has denegado el permiso para usar la cámara.';
-    } else if (err.name === 'NotFoundError') {
-        errorMessage += 'No se encontró ninguna cámara en tu dispositivo.';
-    } else if (err.name === 'NotReadableError') {
-        errorMessage += 'Tu cámara está siendo usada por otra aplicación.';
-    } else if (err.name === 'OverconstrainedError') {
-        errorMessage += 'No se pudo cambiar la cámara. Tu dispositivo puede no tener cámara trasera.';
-    } else {
-        errorMessage += err.message;
-    }
+    const errorMessage = getErrorMessage(err);
+    alert(errorMessage);
+}
 
-    const cameraContainer = document.getElementById('cameraContainer');
-    cameraContainer.innerHTML = `
-        <div style="color: #e74c3c; padding: 20px; text-align: center;">
-            <h3>❌ Error de Cámara</h3>
-            <p>${errorMessage}</p>
-            <button onclick="retryCamera()" class="camera-btn">
-                🔄 Reintentar
-            </button>
-        </div>
-    `;
+function getErrorMessage(err) {
+    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        return 'Permiso de cámara denegado';
+    } else if (err.name === 'NotFoundError') {
+        return 'No se encontró cámara en el dispositivo';
+    } else if (err.name === 'NotReadableError') {
+        return 'La cámara está siendo usada por otra aplicación';
+    }
+    return `Error: ${err.message}`;
 }
 
 function retryCamera() {
@@ -164,11 +153,33 @@ function showPreview(publicUrl, timestamp) {
 
 // Inicializar cuando el documento esté listo
 document.addEventListener('DOMContentLoaded', () => {
-    initCamera('user'); // Comenzar con la cámara frontal
     setupEventListeners();
 });
 
 function setupEventListeners() {
+    // Configurar botón de toggle cámara
+    const toggleCamera = document.getElementById('toggleCamera');
+    const cameraInterface = document.getElementById('cameraInterface');
+    
+    toggleCamera.addEventListener('click', async () => {
+        try {
+            if (cameraInterface.style.display === 'none') {
+                await initCamera('user');
+                cameraInterface.style.display = 'block';
+                toggleCamera.textContent = '🎥 Disable Camera';
+            } else {
+                if (currentStream) {
+                    currentStream.getTracks().forEach(track => track.stop());
+                }
+                cameraInterface.style.display = 'none';
+                toggleCamera.textContent = '📸 Enable Camera';
+            }
+        } catch (error) {
+            console.error('Error con la cámara:', error);
+            handleCameraError(error);
+        }
+    });
+
     // Configurar el botón de cambio de cámara
     const switchBtn = document.getElementById('switchCameraBtn');
     if (switchBtn) {
@@ -185,41 +196,26 @@ function setupEventListeners() {
         captureBtn.addEventListener('click', capturePhoto);
     }
 
-    // Configurar el input de archivo
+    // Configurar input de archivo
     const fileInput = document.getElementById('fileInput');
     if (fileInput) {
         fileInput.addEventListener('change', handleFileUpload);
     }
 }
 
-// Añadir después de setupEventListeners()
+// Modificar handleCameraError para ser menos intrusivo
+function handleCameraError(err) {
+    const errorMessage = getErrorMessage(err);
+    alert(errorMessage);
+}
 
-async function handleFileUpload(event) {
-    try {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        // Generar nombre único
-        const timestamp = new Date();
-        const fileName = `upload_${timestamp.getTime()}.jpg`;
-
-        // Subir a Supabase
-        const { data, error } = await supabase.storage
-            .from('photos')
-            .upload(fileName, file);
-
-        if (error) throw error;
-
-        // Obtener URL pública
-        const { data: { publicUrl } } = supabase.storage
-            .from('photos')
-            .getPublicUrl(fileName);
-
-        // Mostrar preview
-        showPreview(publicUrl, timestamp);
-
-    } catch (error) {
-        console.error('Error al subir archivo:', error);
-        alert('Error al subir el archivo: ' + error.message);
+function getErrorMessage(err) {
+    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        return 'Permiso de cámara denegado';
+    } else if (err.name === 'NotFoundError') {
+        return 'No se encontró cámara en el dispositivo';
+    } else if (err.name === 'NotReadableError') {
+        return 'La cámara está siendo usada por otra aplicación';
     }
+    return `Error: ${err.message}`;
 }

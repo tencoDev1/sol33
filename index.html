@@ -168,6 +168,16 @@
         .camera-controls {
             margin-top: 10px;
         }
+
+        .upload-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .camera-toggle {
+            text-align: center;
+            margin-bottom: 10px;
+        }
     </style>
     <script type="module" src="js/supabase-config.js"></script>
     <script type="module" src="js/main.js"></script>
@@ -176,17 +186,27 @@
     <div class="container">
         <h1>📸 Photo Uploader</h1>
         
+        <!-- Sección de carga de archivos -->
+        <div class="upload-section">
+            <label for="fileInput" class="upload-btn">
+                📁 Upload Image
+            </label>
+            <input type="file" id="fileInput" accept="image/*">
+        </div>
+
+        <!-- Sección de cámara opcional -->
         <div id="cameraContainer">
-            <video id="videoElement" autoplay playsinline></video>
-            <div class="camera-controls">
-                <button id="captureBtn" class="camera-btn" disabled>📸 Take Photo</button>
-                <button id="switchCameraBtn" class="camera-btn">🔄 Switch Camera</button>
-                <label for="fileInput" class="camera-btn">📁 Upload Image</label>
-                <input type="file" id="fileInput" accept="image/*" style="display: none;">
+            <button id="toggleCamera" class="camera-btn">📸 Enable Camera</button>
+            <div id="cameraInterface" style="display: none;">
+                <video id="videoElement" autoplay playsinline></video>
+                <div class="camera-controls">
+                    <button id="captureBtn" class="camera-btn" disabled>📸 Take Photo</button>
+                    <button id="switchCameraBtn" class="camera-btn">🔄 Switch Camera</button>
+                </div>
             </div>
         </div>
 
-        <!-- Asegúrate de que este div existe -->
+        <!-- Contenedor de previsualizaciones -->
         <div id="previewContainer" class="preview-container"></div>
     </div>
 
@@ -258,8 +278,6 @@
                 <div class="camera-controls">
                     <button id="captureBtn" class="camera-btn" disabled>📸 Take Photo</button>
                     <button id="switchCameraBtn" class="camera-btn">🔄 Switch Camera</button>
-                    <label for="fileInput" class="camera-btn">📁 Upload Image</label>
-                    <input type="file" id="fileInput" accept="image/*" style="display: none;">
                 </div>
             `;
             initCamera();
