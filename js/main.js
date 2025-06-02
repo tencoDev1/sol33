@@ -133,6 +133,35 @@ async function capturePhoto() {
     }
 }
 
+// Añadir esta función
+function showPreview(publicUrl, timestamp) {
+    const fileDiv = document.createElement('div');
+    fileDiv.className = 'file-preview';
+    
+    const img = document.createElement('img');
+    img.src = publicUrl;
+    
+    const fileNameDiv = document.createElement('div');
+    fileNameDiv.className = 'file-name';
+    fileNameDiv.textContent = `Photo_${timestamp.toLocaleDateString()}`;
+    
+    const timeInfo = document.createElement('div');
+    timeInfo.className = 'timestamp';
+    timeInfo.textContent = timestamp.toLocaleTimeString();
+    
+    fileDiv.appendChild(img);
+    fileDiv.appendChild(fileNameDiv);
+    fileDiv.appendChild(timeInfo);
+    
+    const previewContainer = document.getElementById('previewContainer');
+    if (!previewContainer) {
+        console.error('Container de preview no encontrado');
+        return;
+    }
+    
+    previewContainer.appendChild(fileDiv);
+}
+
 // Inicializar cuando el documento esté listo
 document.addEventListener('DOMContentLoaded', () => {
     initCamera('user'); // Comenzar con la cámara frontal
