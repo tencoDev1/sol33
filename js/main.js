@@ -1,7 +1,7 @@
-import { supabase } from './supabase-config.js';
+import { supabase, signInAnonymously } from './supabase-config.js'
 
-let currentFacingMode = 'user';
-let currentStream = null;
+let currentFacingMode = 'user'
+let currentStream = null
 
 async function initCamera(facingMode = 'user') {
     const video = document.getElementById('videoElement');
@@ -79,74 +79,57 @@ function retryCamera() {
     setupEventListeners();
 }
 
+// Inicialización de la aplicación
+async function initializeApp() {
+    try {
+        await signInAnonymously()
+        await initCamera()
+        setupEventListeners()
+    } catch (error) {
+        console.error('Error de inicialización:', error)
+        handleError(error)
+    }
+}
+
+// Función para capturar foto
 async function capturePhoto() {
     try {
-        const video = document.getElementById('videoElement');
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+        const video = document.getElementById('videoElement')
+        const canvas = document.createElement('canvas')
+        canvas.width = video.videoWidth
+        canvas.height = video.videoHeight
         
-        // Capturar la imagen
-        const context = canvas.getContext('2d');
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        // Capturar imagen
+        const context = canvas.getContext('2d')
+        context.drawImage(video, 0, 0)
         
         // Convertir a blob
-        const blob = await new Promise((resolve) => {
-            canvas.toBlob(resolve, 'image/jpeg', 0.95);
-        });
+        const blob = await new Promise(resolve => 
+            canvas.toBlob(resolve, 'image/jpeg', 0.95)
+        )
 
         // Generar nombre único
-        const timestamp = new Date();
-        const fileName = `photo_${timestamp.getTime()}.jpg`;
+        const timestamp = new Date()
+        const fileName = `photo_${timestamp.getTime()}.jpg`
 
         // Subir a Supabase
-        console.log('Iniciando subida a Supabase...'); // Debug
         const { data, error } = await supabase.storage
             .from('photos')
-            .upload(fileName, blob, {
-                cacheControl: '3600',
-                contentType: 'image/jpeg'
-            });
+            .upload(fileName, blob)
 
-        if (error) {
-            console.error('Error de Supabase:', error);
-            throw new Error(`Error al subir: ${error.message}`);
-        }
+        if (error) throw error
 
         // Obtener URL pública
         const { data: { publicUrl } } = supabase.storage
             .from('photos')
-            .getPublicUrl(fileName);
+            .getPublicUrl(fileName)
 
-        console.log('Imagen subida. URL:', publicUrl); // Debug
-
-        // Crear preview
-        const fileDiv = document.createElement('div');
-        fileDiv.className = 'file-preview';
-        
-        const img = document.createElement('img');
-        img.src = publicUrl;
-        img.onload = () => console.log('Imagen cargada correctamente');
-        img.onerror = (e) => console.error('Error al cargar la imagen:', e);
-        
-        const fileNameDiv = document.createElement('div');
-        fileNameDiv.className = 'file-name';
-        fileNameDiv.textContent = `Photo_${timestamp.toLocaleDateString()}`;
-        
-        const timeInfo = document.createElement('div');
-        timeInfo.className = 'timestamp';
-        timeInfo.textContent = timestamp.toLocaleTimeString();
-        
-        fileDiv.appendChild(img);
-        fileDiv.appendChild(fileNameDiv);
-        fileDiv.appendChild(timeInfo);
-
-        const previewContainer = document.getElementById('previewContainer');
-        previewContainer.appendChild(fileDiv);
+        // Mostrar preview
+        showPreview(publicUrl, timestamp)
 
     } catch (error) {
-        console.error('Error completo:', error);
-        alert(`Error al subir la foto: ${error.message}`);
+        console.error('Error:', error)
+        alert('Error al subir la foto: ' + error.message)
     }
 }
 
