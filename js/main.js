@@ -80,35 +80,56 @@ function retryCamera() {
 }
 
 async function capturePhoto() {
-    const video = document.getElementById('videoElement');
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    
     try {
+        const video = document.getElementById('videoElement');
+        
+        // Configurar canvas con dimensiones exactas del video
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        
+        // Asegurarse de que el video está reproduciendo
+        if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+            throw new Error('La cámara no está lista');
+        }
+
         // Capturar frame del video
-        canvas.getContext('2d').drawImage(video, 0, 0);
+        const context = canvas.getContext('2d');
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
         
-        // Convertir a blob para Supabase
-        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg'));
-        
-        // Crear nombre único para el archivo
+        // Convertir a blob
+        const blob = await new Promise((resolve, reject) => {
+            canvas.toBlob(resolve, 'image/jpeg', 0.8);
+        });
+
+        // Crear nombre único
         const timestamp = new Date();
         const fileName = `photo_${timestamp.getTime()}.jpg`;
 
-        // Subir a Supabase Storage
-        const { data, error } = await supabase.storage
-            .from('photos')
-            .upload(fileName, blob);
+        console.log('Subiendo archivo:', fileName); // Debug
 
-        if (error) throw error;
+        // Subir a Supabase
+        const { data, error } = await supabase.storage
+            .from('photos') // Asegúrate de que este bucket existe en Supabase
+            .upload(fileName, blob, {
+                contentType: 'image/jpeg'
+            });
+
+        if (error) {
+            console.error('Error Supabase:', error); // Debug
+            throw error;
+        }
+
+        console.log('Archivo subido:', data); // Debug
 
         // Obtener URL pública
         const { data: { publicUrl } } = supabase.storage
             .from('photos')
             .getPublicUrl(fileName);
 
-        // Crear preview
+        console.log('URL pública:', publicUrl); // Debug
+
+        // Crear y mostrar preview
         const fileDiv = document.createElement('div');
         fileDiv.className = 'file-preview';
         
@@ -117,7 +138,7 @@ async function capturePhoto() {
         
         const fileNameDiv = document.createElement('div');
         fileNameDiv.className = 'file-name';
-        fileNameDiv.textContent = `Photo_${timestamp.toISOString().slice(0,10)}`;
+        fileNameDiv.textContent = `Photo_${timestamp.toLocaleDateString()}`;
         
         const timeInfo = document.createElement('div');
         timeInfo.className = 'timestamp';
@@ -126,12 +147,17 @@ async function capturePhoto() {
         fileDiv.appendChild(img);
         fileDiv.appendChild(fileNameDiv);
         fileDiv.appendChild(timeInfo);
+
+        const previewContainer = document.getElementById('previewContainer');
+        if (!previewContainer) {
+            throw new Error('No se encontró el contenedor de preview');
+        }
         
-        document.getElementById('previewContainer').appendChild(fileDiv);
+        previewContainer.appendChild(fileDiv);
 
     } catch (error) {
-        console.error('Error al subir la foto:', error);
-        alert('Error al guardar la foto. Por favor, intenta de nuevo.');
+        console.error('Error detallado:', error);
+        alert(`Error al tomar/guardar la foto: ${error.message}`);
     }
 }
 
