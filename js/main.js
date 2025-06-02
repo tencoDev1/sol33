@@ -82,59 +82,52 @@ function retryCamera() {
 async function capturePhoto() {
     try {
         const video = document.getElementById('videoElement');
-        
-        // Configurar canvas con dimensiones exactas del video
         const canvas = document.createElement('canvas');
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         
-        // Asegurarse de que el video está reproduciendo
-        if (video.readyState !== video.HAVE_ENOUGH_DATA) {
-            throw new Error('La cámara no está lista');
-        }
-
-        // Capturar frame del video
+        // Capturar la imagen
         const context = canvas.getContext('2d');
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
         
         // Convertir a blob
-        const blob = await new Promise((resolve, reject) => {
-            canvas.toBlob(resolve, 'image/jpeg', 0.8);
+        const blob = await new Promise((resolve) => {
+            canvas.toBlob(resolve, 'image/jpeg', 0.95);
         });
 
-        // Crear nombre único
+        // Generar nombre único
         const timestamp = new Date();
         const fileName = `photo_${timestamp.getTime()}.jpg`;
 
-        console.log('Subiendo archivo:', fileName); // Debug
-
         // Subir a Supabase
+        console.log('Iniciando subida a Supabase...'); // Debug
         const { data, error } = await supabase.storage
-            .from('photos') // Asegúrate de que este bucket existe en Supabase
+            .from('photos')
             .upload(fileName, blob, {
+                cacheControl: '3600',
                 contentType: 'image/jpeg'
             });
 
         if (error) {
-            console.error('Error Supabase:', error); // Debug
-            throw error;
+            console.error('Error de Supabase:', error);
+            throw new Error(`Error al subir: ${error.message}`);
         }
-
-        console.log('Archivo subido:', data); // Debug
 
         // Obtener URL pública
         const { data: { publicUrl } } = supabase.storage
             .from('photos')
             .getPublicUrl(fileName);
 
-        console.log('URL pública:', publicUrl); // Debug
+        console.log('Imagen subida. URL:', publicUrl); // Debug
 
-        // Crear y mostrar preview
+        // Crear preview
         const fileDiv = document.createElement('div');
         fileDiv.className = 'file-preview';
         
         const img = document.createElement('img');
         img.src = publicUrl;
+        img.onload = () => console.log('Imagen cargada correctamente');
+        img.onerror = (e) => console.error('Error al cargar la imagen:', e);
         
         const fileNameDiv = document.createElement('div');
         fileNameDiv.className = 'file-name';
@@ -149,15 +142,11 @@ async function capturePhoto() {
         fileDiv.appendChild(timeInfo);
 
         const previewContainer = document.getElementById('previewContainer');
-        if (!previewContainer) {
-            throw new Error('No se encontró el contenedor de preview');
-        }
-        
         previewContainer.appendChild(fileDiv);
 
     } catch (error) {
-        console.error('Error detallado:', error);
-        alert(`Error al tomar/guardar la foto: ${error.message}`);
+        console.error('Error completo:', error);
+        alert(`Error al subir la foto: ${error.message}`);
     }
 }
 
