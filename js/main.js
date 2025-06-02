@@ -184,4 +184,42 @@ function setupEventListeners() {
     if (captureBtn) {
         captureBtn.addEventListener('click', capturePhoto);
     }
+
+    // Configurar el input de archivo
+    const fileInput = document.getElementById('fileInput');
+    if (fileInput) {
+        fileInput.addEventListener('change', handleFileUpload);
+    }
+}
+
+// Añadir después de setupEventListeners()
+
+async function handleFileUpload(event) {
+    try {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // Generar nombre único
+        const timestamp = new Date();
+        const fileName = `upload_${timestamp.getTime()}.jpg`;
+
+        // Subir a Supabase
+        const { data, error } = await supabase.storage
+            .from('photos')
+            .upload(fileName, file);
+
+        if (error) throw error;
+
+        // Obtener URL pública
+        const { data: { publicUrl } } = supabase.storage
+            .from('photos')
+            .getPublicUrl(fileName);
+
+        // Mostrar preview
+        showPreview(publicUrl, timestamp);
+
+    } catch (error) {
+        console.error('Error al subir archivo:', error);
+        alert('Error al subir el archivo: ' + error.message);
+    }
 }
