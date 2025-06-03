@@ -13,33 +13,69 @@ async function initCamera() {
             currentStream.getTracks().forEach(track => track.stop());
         }
 
-        // Configurar la cámara trasera
-        const constraints = {
-            video: {
-                facingMode: { exact: 'environment' }
+        // Primer intento con cámara trasera
+        try {
+            const constraints = {
+                video: {
+                    facingMode: { exact: 'environment' }
+                }
+            };
+            currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (firstError) {
+            console.log('Primer intento fallido, probando sin exact:', firstError);
+            
+            // Segundo intento: sin exact
+            try {
+                const fallbackConstraints = {
+                    video: {
+                        facingMode: 'environment'
+                    }
+                };
+                currentStream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
+            } catch (secondError) {
+                console.log('Segundo intento fallido, probando cualquier cámara:', secondError);
+                
+                // Último intento: cualquier cámara
+                const lastConstraints = {
+                    video: true
+                };
+                currentStream = await navigator.mediaDevices.getUserMedia(lastConstraints);
             }
-        };
+        }
 
-        // Obtener acceso a la cámara
-        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+        // Configurar el video
         video.srcObject = currentStream;
         await video.play();
-
-        // Habilitar el botón de captura
         captureBtn.disabled = false;
 
     } catch (err) {
-        console.error('Error al iniciar cámara:', err);
+        console.error('Error final al iniciar cámara:', err);
         handleCameraError(err);
     }
 }
 
 // Añadir función para manejar errores
 function handleCameraError(err) {
-    const message = err.name === 'NotAllowedError' ? 
-        'Permiso de cámara denegado. Por favor, permite el acceso a la cámara.' :
-        `Error de cámara: ${err.message}`;
+    let message = '';
+    switch (err.name) {
+        case 'NotAllowedError':
+        case 'PermissionDeniedError':
+            message = 'Permiso de cámara denegado. Por favor, permite el acceso a la cámara.';
+            break;
+        case 'NotFoundError':
+            message = 'No se encontró ninguna cámara en el dispositivo.';
+            break;
+        case 'NotReadableError':
+            message = 'La cámara está siendo usada por otra aplicación.';
+            break;
+        case 'OverconstrainedError':
+            message = 'No se encontró cámara trasera. Usando cámara frontal.';
+            break;
+        default:
+            message = `Error de cámara: ${err.message}`;
+    }
     
+    console.error(message);
     alert(message);
 }
 
