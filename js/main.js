@@ -1,6 +1,6 @@
 import { supabase, signInAnonymously } from './supabase-config.js'
 
-let currentFacingMode = 'environment'; // Cambiado de 'user' a 'environment'
+let currentFacingMode = 'environment'; // 'user' para frontal, 'environment' para trasera
 let currentStream = null;
 
 async function initCamera() {
@@ -13,22 +13,8 @@ async function initCamera() {
             currentStream.getTracks().forEach(track => track.stop());
         }
 
-        // Buscar la cámara trasera por deviceId si es posible
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const videoDevices = devices.filter(device => device.kind === 'videoinput');
-        let backCamera = videoDevices.find(device =>
-            device.label.toLowerCase().includes('back') ||
-            device.label.toLowerCase().includes('trasera') ||
-            device.label.toLowerCase().includes('environment')
-        );
-
-        let constraints;
-        if (backCamera) {
-            constraints = { video: { deviceId: { exact: backCamera.deviceId } } };
-        } else {
-            // Si no se encuentra, intentar con facingMode
-            constraints = { video: { facingMode: { ideal: 'environment' } } };
-        }
+        // Intentar abrir la cámara según el modo actual
+        let constraints = { video: { facingMode: { ideal: currentFacingMode } } };
 
         currentStream = await navigator.mediaDevices.getUserMedia(constraints);
 
@@ -240,6 +226,15 @@ function setupEventListeners() {
                 console.error('Error:', error);
                 handleCameraError(error);
             }
+        });
+    }
+
+    // Botón para cambiar cámara
+    const switchBtn = document.getElementById('switchCameraBtn');
+    if (switchBtn) {
+        switchBtn.addEventListener('click', async () => {
+            currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+            await initCamera();
         });
     }
 
