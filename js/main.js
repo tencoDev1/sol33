@@ -13,33 +13,24 @@ async function initCamera() {
             currentStream.getTracks().forEach(track => track.stop());
         }
 
-        // 1. Intentar con exact (trasera)
-        try {
-            const constraints = {
-                video: { facingMode: { exact: 'environment' } }
-            };
-            currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-        } catch (firstError) {
-            console.warn('No se pudo usar exact:environment, probando ideal:environment', firstError);
+        // Buscar la cámara trasera por deviceId si es posible
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        let backCamera = videoDevices.find(device =>
+            device.label.toLowerCase().includes('back') ||
+            device.label.toLowerCase().includes('trasera') ||
+            device.label.toLowerCase().includes('environment')
+        );
 
-            // 2. Intentar con ideal (trasera sugerida)
-            try {
-                const constraints = {
-                    video: { facingMode: { ideal: 'environment' } }
-                };
-                currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-            } catch (secondError) {
-                console.warn('No se pudo usar ideal:environment, probando cualquier cámara', secondError);
-
-                // 3. Intentar con cualquier cámara disponible
-                try {
-                    currentStream = await navigator.mediaDevices.getUserMedia({ video: true });
-                } catch (thirdError) {
-                    // Si todo falla, mostrar error
-                    throw thirdError;
-                }
-            }
+        let constraints;
+        if (backCamera) {
+            constraints = { video: { deviceId: { exact: backCamera.deviceId } } };
+        } else {
+            // Si no se encuentra, intentar con facingMode
+            constraints = { video: { facingMode: { ideal: 'environment' } } };
         }
+
+        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
 
         video.srcObject = currentStream;
         await video.play();
