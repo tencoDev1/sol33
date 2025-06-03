@@ -3,7 +3,7 @@ import { supabase, signInAnonymously } from './supabase-config.js'
 let currentFacingMode = 'environment'; // Cambiado de 'user' a 'environment'
 let currentStream = null;
 
-async function initCamera(facingMode = 'environment') { // Cambiado el valor por defecto
+async function initCamera() {
     const video = document.getElementById('videoElement');
     const captureBtn = document.getElementById('captureBtn');
 
@@ -13,10 +13,10 @@ async function initCamera(facingMode = 'environment') { // Cambiado el valor por
             currentStream.getTracks().forEach(track => track.stop());
         }
 
-        // Configurar la cámara
+        // Configurar la cámara trasera
         const constraints = {
             video: {
-                facingMode: { exact: facingMode } // Usar exact para forzar la cámara trasera
+                facingMode: { exact: 'environment' }
             }
         };
 
@@ -27,7 +27,6 @@ async function initCamera(facingMode = 'environment') { // Cambiado el valor por
 
         // Habilitar el botón de captura
         captureBtn.disabled = false;
-        currentFacingMode = facingMode;
 
     } catch (err) {
         console.error('Error al iniciar cámara:', err);
@@ -203,7 +202,7 @@ function setupEventListeners() {
         toggleCamera.addEventListener('click', async () => {
             try {
                 if (cameraInterface.style.display === 'none') {
-                    await initCamera('user');
+                    await initCamera();
                     cameraInterface.style.display = 'block';
                     toggleCamera.textContent = '🎥 Disable Camera';
                 } else {
@@ -224,14 +223,5 @@ function setupEventListeners() {
     const captureBtn = document.getElementById('captureBtn');
     if (captureBtn) {
         captureBtn.addEventListener('click', capturePhoto);
-    }
-
-    // Configurar botón de cambio de cámara
-    const switchBtn = document.getElementById('switchCameraBtn');
-    if (switchBtn) {
-        switchBtn.addEventListener('click', () => {
-            const newMode = currentFacingMode === 'user' ? 'environment' : 'user';
-            initCamera(newMode);
-        });
     }
 }
