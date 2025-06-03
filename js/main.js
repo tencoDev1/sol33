@@ -13,37 +13,34 @@ async function initCamera() {
             currentStream.getTracks().forEach(track => track.stop());
         }
 
-        // Primer intento con cámara trasera
+        // 1. Intentar con exact (trasera)
         try {
             const constraints = {
-                video: {
-                    facingMode: { exact: 'environment' }
-                }
+                video: { facingMode: { exact: 'environment' } }
             };
             currentStream = await navigator.mediaDevices.getUserMedia(constraints);
         } catch (firstError) {
-            console.log('Primer intento fallido, probando sin exact:', firstError);
-            
-            // Segundo intento: sin exact
+            console.warn('No se pudo usar exact:environment, probando ideal:environment', firstError);
+
+            // 2. Intentar con ideal (trasera sugerida)
             try {
-                const fallbackConstraints = {
-                    video: {
-                        facingMode: 'environment'
-                    }
+                const constraints = {
+                    video: { facingMode: { ideal: 'environment' } }
                 };
-                currentStream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
+                currentStream = await navigator.mediaDevices.getUserMedia(constraints);
             } catch (secondError) {
-                console.log('Segundo intento fallido, probando cualquier cámara:', secondError);
-                
-                // Último intento: cualquier cámara
-                const lastConstraints = {
-                    video: true
-                };
-                currentStream = await navigator.mediaDevices.getUserMedia(lastConstraints);
+                console.warn('No se pudo usar ideal:environment, probando cualquier cámara', secondError);
+
+                // 3. Intentar con cualquier cámara disponible
+                try {
+                    currentStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                } catch (thirdError) {
+                    // Si todo falla, mostrar error
+                    throw thirdError;
+                }
             }
         }
 
-        // Configurar el video
         video.srcObject = currentStream;
         await video.play();
         captureBtn.disabled = false;
