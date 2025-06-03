@@ -1,9 +1,9 @@
 import { supabase, signInAnonymously } from './supabase-config.js'
 
-let currentFacingMode = 'user';
+let currentFacingMode = 'environment'; // Cambiado de 'user' a 'environment'
 let currentStream = null;
 
-async function initCamera(facingMode = 'user') {
+async function initCamera(facingMode = 'environment') { // Cambiado el valor por defecto
     const video = document.getElementById('videoElement');
     const captureBtn = document.getElementById('captureBtn');
 
@@ -16,7 +16,7 @@ async function initCamera(facingMode = 'user') {
         // Configurar la cámara
         const constraints = {
             video: {
-                facingMode: { ideal: facingMode }
+                facingMode: { exact: facingMode } // Usar exact para forzar la cámara trasera
             }
         };
 
