@@ -208,6 +208,8 @@ input[type="file"] {
 .timestamp {
     font-size: 12px;
     color: #718096;
+    margin-top: 5px;
+    text-align: center;
 }
 
 #cameraInterface {

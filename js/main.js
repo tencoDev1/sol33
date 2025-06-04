@@ -1,18 +1,30 @@
 import { supabase, signInAnonymously } from './supabase-config.js';
 
-let currentStream = null;
-
 // Función para cargar imágenes de Supabase
 async function loadSupabaseImages() {
     try {
+        // Limpiar contenedor de imágenes
+        const previewContainer = document.getElementById('previewContainer');
+        previewContainer.innerHTML = '';
+
+        // Obtener lista de archivos
         const { data, error } = await supabase
             .storage
             .from('photos')
             .list();
 
-        if (error) throw error;
+        if (error) {
+            console.error('Error al cargar imágenes:', error);
+            return;
+        }
 
-        for (const file of data) {
+        // Ordenar por fecha más reciente
+        const sortedFiles = data.sort((a, b) => 
+            new Date(b.created_at) - new Date(a.created_at)
+        );
+
+        // Mostrar cada imagen
+        for (const file of sortedFiles) {
             const { data: { publicUrl } } = supabase
                 .storage
                 .from('photos')
@@ -33,6 +45,8 @@ function showPreview(publicUrl, timestamp, fileName) {
     
     const img = document.createElement('img');
     img.src = publicUrl;
+    img.alt = fileName;
+    img.loading = 'lazy';
     
     // Añadir funcionalidad de lightbox
     img.addEventListener('click', () => {
@@ -42,114 +56,38 @@ function showPreview(publicUrl, timestamp, fileName) {
         lightbox.style.display = 'flex';
     });
     
-    const fileNameDiv = document.createElement('div');
-    fileNameDiv.className = 'file-name';
-    fileNameDiv.textContent = fileName || `Photo_${timestamp.toLocaleDateString()}`;
+    const timeInfo = document.createElement('div');
+    timeInfo.className = 'timestamp';
+    timeInfo.textContent = timestamp.toLocaleString();
     
     fileDiv.appendChild(img);
-    fileDiv.appendChild(fileNameDiv);
+    fileDiv.appendChild(timeInfo);
     
     const previewContainer = document.getElementById('previewContainer');
     previewContainer.appendChild(fileDiv);
 }
 
-// Función para iniciar la cámara
-async function initCamera() {
-    const video = document.getElementById('videoElement');
-    const captureBtn = document.getElementById('captureBtn');
-
-    try {
-        if (currentStream) {
-            currentStream.getTracks().forEach(track => track.stop());
-        }
-
-        const constraints = {
-            video: { facingMode: 'environment' }
-        };
-
-        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-        video.srcObject = currentStream;
-        await video.play();
-        captureBtn.disabled = false;
-
-    } catch (err) {
-        console.error('Error al iniciar cámara:', err);
-        alert('Error al acceder a la cámara: ' + err.message);
-    }
-}
-
-// Función para capturar foto
-async function capturePhoto() {
-    try {
-        const video = document.getElementById('videoElement');
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        
-        const context = canvas.getContext('2d');
-        context.drawImage(video, 0, 0);
-        
-        const blob = await new Promise(resolve => 
-            canvas.toBlob(resolve, 'image/jpeg', 0.95)
-        );
-
-        const timestamp = new Date();
-        const fileName = `photo_${timestamp.getTime()}.jpg`;
-
-        const { data, error } = await supabase.storage
-            .from('photos')
-            .upload(fileName, blob);
-
-        if (error) throw error;
-
-        const { data: { publicUrl } } = supabase.storage
-            .from('photos')
-            .getPublicUrl(fileName);
-
-        showPreview(publicUrl, timestamp, fileName);
-
-    } catch (error) {
-        console.error('Error:', error);
-        alert('Error al capturar la foto: ' + error.message);
-    }
-}
-
-// Event Listeners
+// Inicialización
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         await signInAnonymously();
         await loadSupabaseImages();
         
-        // Setup camera button
-        const toggleCamera = document.getElementById('toggleCamera');
-        if (toggleCamera) {
-            toggleCamera.addEventListener('click', async () => {
-                const cameraInterface = document.getElementById('cameraInterface');
-                if (cameraInterface.style.display === 'none') {
-                    await initCamera();
-                    cameraInterface.style.display = 'block';
-                } else {
-                    if (currentStream) {
-                        currentStream.getTracks().forEach(track => track.stop());
-                    }
-                    cameraInterface.style.display = 'none';
-                }
-            });
-        }
-
-        // Setup capture button
-        const captureBtn = document.getElementById('captureBtn');
-        if (captureBtn) {
-            captureBtn.addEventListener('click', capturePhoto);
-        }
-
-        // Setup lightbox close
+        // Configurar lightbox
+        const lightbox = document.getElementById('lightbox');
         const closeLightbox = document.querySelector('.close-lightbox');
+        
         if (closeLightbox) {
             closeLightbox.addEventListener('click', () => {
-                document.getElementById('lightbox').style.display = 'none';
+                lightbox.style.display = 'none';
             });
         }
+        
+        lightbox?.addEventListener('click', (e) => {
+            if (e.target === lightbox) {
+                lightbox.style.display = 'none';
+            }
+        });
 
     } catch (error) {
         console.error('Error de inicialización:', error);
