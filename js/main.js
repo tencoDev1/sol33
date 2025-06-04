@@ -1,8 +1,5 @@
 import { supabase, signInAnonymously } from './supabase-config.js';
 
-<<<<<<< HEAD
-// Función para cargar imágenes de Supabase
-=======
 let currentFacingMode = 'environment'; // Cambiado de 'user' a 'environment'
 let currentStream = null;
 
@@ -148,8 +145,6 @@ async function capturePhoto() {
     }
 }
 
-// Añadir esta función
->>>>>>> parent of d9ad6e2 (cf1)
 async function loadSupabaseImages() {
     try {
         // Limpiar contenedor de imágenes
@@ -238,16 +233,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
 
-<<<<<<< HEAD
+        // Configurar botón de captura
+        const captureBtn = document.getElementById('captureBtn');
+        if (captureBtn) {
+            captureBtn.addEventListener('click', capturePhoto);
+        }
     } catch (error) {
         console.error('Error de inicialización:', error);
     }
 });
-=======
-    // Configurar botón de captura
-    const captureBtn = document.getElementById('captureBtn');
-    if (captureBtn) {
-        captureBtn.addEventListener('click', capturePhoto);
-    }
-}
->>>>>>> parent of d9ad6e2 (cf1)

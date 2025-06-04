@@ -204,32 +204,14 @@
 </head>
 <body>
     <div class="container">
-        <h1>📸 Photo Uploader</h1>
+        <h1>📸 Photo Gallery</h1>
         
-        <div id="cameraContainer">
-<<<<<<< HEAD
-            <video id="videoElement" autoplay playsinline></video>
-            <div class="camera-controls">
-                <button id="captureBtn" class="camera-btn" disabled>📸 Take Photo</button>
-                <button id="switchCameraBtn" class="camera-btn">🔄 Switch Camera</button>
-                <label for="fileInput" class="camera-btn">📁 Upload Image</label>
-                <input type="file" id="fileInput" accept="image/*" style="display: none;">
-=======
-            <button id="toggleCamera" class="camera-btn">📸 Enable Camera</button>
-            <div id="cameraInterface" style="display: none;">
-                <video id="videoElement" autoplay playsinline></video>
-                <div class="camera-controls">
-                    <button id="captureBtn" class="camera-btn" disabled>📸 Take Photo</button>
-                </div>
->>>>>>> parent of d9ad6e2 (cf1)
-            </div>
-        </div>
-
         <div id="previewContainer" class="preview-container"></div>
-        
+
+        <!-- Lightbox -->
         <div id="lightbox" class="lightbox">
             <span class="close-lightbox">&times;</span>
-            <img id="lightbox-img" class="lightbox-content">
+            <img id="lightbox-img" class="lightbox-content" alt="Enlarged photo">
         </div>
     </div>
 
@@ -302,12 +284,9 @@
                 <video id="videoElement" autoplay playsinline></video>
                 <div class="camera-controls">
                     <button id="captureBtn" class="camera-btn" disabled>📸 Take Photo</button>
-<<<<<<< HEAD
                     <button id="switchCameraBtn" class="camera-btn">🔄 Switch Camera</button>
                     <label for="fileInput" class="camera-btn">📁 Upload Image</label>
                     <input type="file" id="fileInput" accept="image/*" style="display: none;">
-=======
->>>>>>> parent of d9ad6e2 (cf1)
                 </div>
             `;
             initCamera();
