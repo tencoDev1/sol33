@@ -1,6 +1,6 @@
-import { supabase, signInAnonymously } from './supabase-config.js'
+import { supabase, signInAnonymously } from './supabase-config.js';
 
-let currentFacingMode = 'environment'; // 'user' para frontal, 'environment' para trasera
+let currentFacingMode = 'environment';
 let currentStream = null;
 
 async function initCamera() {
@@ -8,22 +8,23 @@ async function initCamera() {
     const captureBtn = document.getElementById('captureBtn');
 
     try {
-        // Detener cualquier stream activo
         if (currentStream) {
             currentStream.getTracks().forEach(track => track.stop());
         }
 
-        // Intentar abrir la cámara según el modo actual
-        let constraints = { video: { facingMode: { ideal: currentFacingMode } } };
+        const constraints = {
+            video: {
+                facingMode: { ideal: currentFacingMode }
+            }
+        };
 
         currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-
         video.srcObject = currentStream;
         await video.play();
         captureBtn.disabled = false;
 
     } catch (err) {
-        console.error('Error final al iniciar cámara:', err);
+        console.error('Error al iniciar cámara:', err);
         handleCameraError(err);
     }
 }
@@ -204,11 +205,11 @@ document.getElementById('lightbox')?.addEventListener('click', (e) => {
 });
 
 function setupEventListeners() {
-    // Configurar botón de toggle cámara
+    // Toggle cámara
     const toggleCamera = document.getElementById('toggleCamera');
     const cameraInterface = document.getElementById('cameraInterface');
     
-    if (toggleCamera && cameraInterface) {
+    if (toggleCamera) {
         toggleCamera.addEventListener('click', async () => {
             try {
                 if (cameraInterface.style.display === 'none') {
@@ -218,6 +219,7 @@ function setupEventListeners() {
                 } else {
                     if (currentStream) {
                         currentStream.getTracks().forEach(track => track.stop());
+                        currentStream = null;
                     }
                     cameraInterface.style.display = 'none';
                     toggleCamera.textContent = '📸 Enable Camera';
@@ -229,7 +231,7 @@ function setupEventListeners() {
         });
     }
 
-    // Botón para cambiar cámara
+    // Cambiar cámara
     const switchBtn = document.getElementById('switchCameraBtn');
     if (switchBtn) {
         switchBtn.addEventListener('click', async () => {
@@ -238,9 +240,16 @@ function setupEventListeners() {
         });
     }
 
-    // Configurar botón de captura
+    // Botón de captura
     const captureBtn = document.getElementById('captureBtn');
     if (captureBtn) {
         captureBtn.addEventListener('click', capturePhoto);
     }
 }
+
+// Limpiar al cerrar/recargar
+window.addEventListener('beforeunload', () => {
+    if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+    }
+});
