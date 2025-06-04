@@ -263,63 +263,61 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Función para cargar imágenes de Supabase
 async function loadImages() {
     try {
+        console.log('Loading images from Supabase...');
+        const previewContainer = document.getElementById('previewContainer');
+        previewContainer.innerHTML = '';
+
         const { data, error } = await supabase
             .storage
             .from('photos')
             .list();
 
-        if (error) {
-            throw error;
-        }
+        if (error) throw error;
 
-        const previewContainer = document.getElementById('previewContainer');
-        previewContainer.innerHTML = ''; // Limpiar contenedor
+        console.log('Found images:', data);
 
-        // Ordenar por fecha más reciente
-        const sortedFiles = data.sort((a, b) => 
-            new Date(b.created_at) - new Date(a.created_at)
-        );
-
-        for (const file of sortedFiles) {
+        for (const file of data) {
             const { data: { publicUrl } } = supabase
                 .storage
                 .from('photos')
                 .getPublicUrl(file.name);
 
-            // Crear elemento de imagen
-            const div = document.createElement('div');
-            div.className = 'file-preview';
-
-            const img = document.createElement('img');
-            img.src = publicUrl;
-            img.alt = file.name;
-            
-            // Agregar evento click para lightbox
-            img.onclick = () => {
-                const lightbox = document.getElementById('lightbox');
-                const lightboxImg = document.getElementById('lightbox-img');
-                lightboxImg.src = publicUrl;
-                lightbox.style.display = 'flex';
-            };
-
-            div.appendChild(img);
-            previewContainer.appendChild(div);
+            console.log('Image URL:', publicUrl);
+            createImagePreview(publicUrl, file.name);
         }
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Error loading images:', error);
     }
 }
 
-// Cargar imágenes cuando la página se carga
+function createImagePreview(url, fileName) {
+    const div = document.createElement('div');
+    div.className = 'file-preview';
+    
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = fileName;
+    
+    img.onclick = () => {
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImg = document.getElementById('lightbox-img');
+        lightboxImg.src = url;
+        lightbox.style.display = 'flex';
+    };
+    
+    div.appendChild(img);
+    document.getElementById('previewContainer').appendChild(div);
+}
+
+// Initialize
 document.addEventListener('DOMContentLoaded', loadImages);
 
-// Cerrar lightbox
-document.querySelector('.close-lightbox').addEventListener('click', () => {
+// Lightbox events
+document.querySelector('.close-lightbox')?.addEventListener('click', () => {
     document.getElementById('lightbox').style.display = 'none';
 });
 
-// Cerrar lightbox al hacer clic fuera de la imagen
-document.getElementById('lightbox').addEventListener('click', (e) => {
+document.getElementById('lightbox')?.addEventListener('click', (e) => {
     if (e.target.id === 'lightbox') {
         e.target.style.display = 'none';
     }
