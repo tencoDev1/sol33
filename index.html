@@ -10,20 +10,12 @@
     <div class="container">
         <h1>📸 Photo Uploader</h1>
         
-        <div class="upload-section">
-            <label for="fileInput" class="upload-btn">
-                📁 Upload Image
-            </label>
-            <input type="file" id="fileInput" accept="image/*">
-        </div>
-
         <div id="cameraContainer">
             <button id="toggleCamera" class="camera-btn">📸 Enable Camera</button>
             <div id="cameraInterface" style="display: none;">
                 <video id="videoElement" autoplay playsinline></video>
                 <div class="camera-controls">
                     <button id="captureBtn" class="camera-btn" disabled>📸 Take Photo</button>
-                    <button id="switchCameraBtn" class="camera-btn">🔄 Switch Camera</button>
                 </div>
             </div>
         </div>

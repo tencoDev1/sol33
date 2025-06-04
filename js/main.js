@@ -1,138 +1,8 @@
 import { supabase, signInAnonymously } from './supabase-config.js';
 
-let currentFacingMode = 'environment';
 let currentStream = null;
 
-async function initCamera() {
-    const video = document.getElementById('videoElement');
-    const captureBtn = document.getElementById('captureBtn');
-
-    try {
-        if (currentStream) {
-            currentStream.getTracks().forEach(track => track.stop());
-        }
-
-        const constraints = {
-            video: {
-                facingMode: { ideal: currentFacingMode }
-            }
-        };
-
-        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-        video.srcObject = currentStream;
-        await video.play();
-        captureBtn.disabled = false;
-
-    } catch (err) {
-        console.error('Error al iniciar cámara:', err);
-        handleCameraError(err);
-    }
-}
-
-// Añadir función para manejar errores
-function handleCameraError(err) {
-    let message = '';
-    switch (err.name) {
-        case 'NotAllowedError':
-        case 'PermissionDeniedError':
-            message = 'Permiso de cámara denegado. Por favor, permite el acceso a la cámara.';
-            break;
-        case 'NotFoundError':
-            message = 'No se encontró ninguna cámara en el dispositivo.';
-            break;
-        case 'NotReadableError':
-            message = 'La cámara está siendo usada por otra aplicación.';
-            break;
-        case 'OverconstrainedError':
-            message = 'No se encontró cámara trasera. Usando cámara frontal.';
-            break;
-        default:
-            message = `Error de cámara: ${err.message}`;
-    }
-    
-    console.error(message);
-    alert(message);
-}
-
-function getErrorMessage(err) {
-    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        return 'Permiso de cámara denegado';
-    } else if (err.name === 'NotFoundError') {
-        return 'No se encontró cámara en el dispositivo';
-    } else if (err.name === 'NotReadableError') {
-        return 'La cámara está siendo usada por otra aplicación';
-    }
-    return `Error: ${err.message}`;
-}
-
-function retryCamera() {
-    const cameraContainer = document.getElementById('cameraContainer');
-    cameraContainer.innerHTML = `
-        <video id="videoElement" autoplay playsinline></video>
-        <div class="camera-controls">
-            <button id="captureBtn" class="camera-btn" disabled>📸 Take Photo</button>
-            <button id="switchCameraBtn" class="camera-btn">🔄 Switch Camera</button>
-        </div>
-    `;
-    initCamera(currentFacingMode);
-    setupEventListeners();
-}
-
-// Inicialización de la aplicación
-async function initializeApp() {
-    try {
-        await signInAnonymously()
-        await initCamera()
-        setupEventListeners()
-    } catch (error) {
-        console.error('Error de inicialización:', error)
-        handleError(error)
-    }
-}
-
-// Función para capturar foto
-async function capturePhoto() {
-    try {
-        const video = document.getElementById('videoElement')
-        const canvas = document.createElement('canvas')
-        canvas.width = video.videoWidth
-        canvas.height = video.videoHeight
-        
-        // Capturar imagen
-        const context = canvas.getContext('2d')
-        context.drawImage(video, 0, 0)
-        
-        // Convertir a blob
-        const blob = await new Promise(resolve => 
-            canvas.toBlob(resolve, 'image/jpeg', 0.95)
-        )
-
-        // Generar nombre único
-        const timestamp = new Date()
-        const fileName = `photo_${timestamp.getTime()}.jpg`
-
-        // Subir a Supabase
-        const { data, error } = await supabase.storage
-            .from('photos')
-            .upload(fileName, blob)
-
-        if (error) throw error
-
-        // Obtener URL pública
-        const { data: { publicUrl } } = supabase.storage
-            .from('photos')
-            .getPublicUrl(fileName)
-
-        // Mostrar preview
-        showPreview(publicUrl, timestamp)
-
-    } catch (error) {
-        console.error('Error:', error)
-        alert('Error al subir la foto: ' + error.message)
-    }
-}
-
-// Añadir esta función
+// Función para cargar imágenes de Supabase
 async function loadSupabaseImages() {
     try {
         const { data, error } = await supabase
@@ -156,6 +26,7 @@ async function loadSupabaseImages() {
     }
 }
 
+// Función para mostrar preview
 function showPreview(publicUrl, timestamp, fileName) {
     const fileDiv = document.createElement('div');
     fileDiv.className = 'file-preview';
@@ -175,81 +46,112 @@ function showPreview(publicUrl, timestamp, fileName) {
     fileNameDiv.className = 'file-name';
     fileNameDiv.textContent = fileName || `Photo_${timestamp.toLocaleDateString()}`;
     
-    const timeInfo = document.createElement('div');
-    timeInfo.className = 'timestamp';
-    timeInfo.textContent = timestamp.toLocaleTimeString();
-    
     fileDiv.appendChild(img);
     fileDiv.appendChild(fileNameDiv);
-    fileDiv.appendChild(timeInfo);
     
     const previewContainer = document.getElementById('previewContainer');
     previewContainer.appendChild(fileDiv);
 }
 
-// Inicializar cuando el documento esté listo
-document.addEventListener('DOMContentLoaded', () => {
-    loadSupabaseImages();
-    setupEventListeners();
-});
-
-// Eventos del lightbox
-document.querySelector('.close-lightbox')?.addEventListener('click', () => {
-    document.getElementById('lightbox').style.display = 'none';
-});
-
-document.getElementById('lightbox')?.addEventListener('click', (e) => {
-    if (e.target.id === 'lightbox') {
-        e.target.style.display = 'none';
-    }
-});
-
-function setupEventListeners() {
-    // Toggle cámara
-    const toggleCamera = document.getElementById('toggleCamera');
-    const cameraInterface = document.getElementById('cameraInterface');
-    
-    if (toggleCamera) {
-        toggleCamera.addEventListener('click', async () => {
-            try {
-                if (cameraInterface.style.display === 'none') {
-                    await initCamera();
-                    cameraInterface.style.display = 'block';
-                    toggleCamera.textContent = '🎥 Disable Camera';
-                } else {
-                    if (currentStream) {
-                        currentStream.getTracks().forEach(track => track.stop());
-                        currentStream = null;
-                    }
-                    cameraInterface.style.display = 'none';
-                    toggleCamera.textContent = '📸 Enable Camera';
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                handleCameraError(error);
-            }
-        });
-    }
-
-    // Cambiar cámara
-    const switchBtn = document.getElementById('switchCameraBtn');
-    if (switchBtn) {
-        switchBtn.addEventListener('click', async () => {
-            currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
-            await initCamera();
-        });
-    }
-
-    // Botón de captura
+// Función para iniciar la cámara
+async function initCamera() {
+    const video = document.getElementById('videoElement');
     const captureBtn = document.getElementById('captureBtn');
-    if (captureBtn) {
-        captureBtn.addEventListener('click', capturePhoto);
+
+    try {
+        if (currentStream) {
+            currentStream.getTracks().forEach(track => track.stop());
+        }
+
+        const constraints = {
+            video: { facingMode: 'environment' }
+        };
+
+        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = currentStream;
+        await video.play();
+        captureBtn.disabled = false;
+
+    } catch (err) {
+        console.error('Error al iniciar cámara:', err);
+        alert('Error al acceder a la cámara: ' + err.message);
     }
 }
 
-// Limpiar al cerrar/recargar
-window.addEventListener('beforeunload', () => {
-    if (currentStream) {
-        currentStream.getTracks().forEach(track => track.stop());
+// Función para capturar foto
+async function capturePhoto() {
+    try {
+        const video = document.getElementById('videoElement');
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        
+        const context = canvas.getContext('2d');
+        context.drawImage(video, 0, 0);
+        
+        const blob = await new Promise(resolve => 
+            canvas.toBlob(resolve, 'image/jpeg', 0.95)
+        );
+
+        const timestamp = new Date();
+        const fileName = `photo_${timestamp.getTime()}.jpg`;
+
+        const { data, error } = await supabase.storage
+            .from('photos')
+            .upload(fileName, blob);
+
+        if (error) throw error;
+
+        const { data: { publicUrl } } = supabase.storage
+            .from('photos')
+            .getPublicUrl(fileName);
+
+        showPreview(publicUrl, timestamp, fileName);
+
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error al capturar la foto: ' + error.message);
+    }
+}
+
+// Event Listeners
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        await signInAnonymously();
+        await loadSupabaseImages();
+        
+        // Setup camera button
+        const toggleCamera = document.getElementById('toggleCamera');
+        if (toggleCamera) {
+            toggleCamera.addEventListener('click', async () => {
+                const cameraInterface = document.getElementById('cameraInterface');
+                if (cameraInterface.style.display === 'none') {
+                    await initCamera();
+                    cameraInterface.style.display = 'block';
+                } else {
+                    if (currentStream) {
+                        currentStream.getTracks().forEach(track => track.stop());
+                    }
+                    cameraInterface.style.display = 'none';
+                }
+            });
+        }
+
+        // Setup capture button
+        const captureBtn = document.getElementById('captureBtn');
+        if (captureBtn) {
+            captureBtn.addEventListener('click', capturePhoto);
+        }
+
+        // Setup lightbox close
+        const closeLightbox = document.querySelector('.close-lightbox');
+        if (closeLightbox) {
+            closeLightbox.addEventListener('click', () => {
+                document.getElementById('lightbox').style.display = 'none';
+            });
+        }
+
+    } catch (error) {
+        console.error('Error de inicialización:', error);
     }
 });
