@@ -147,7 +147,9 @@ async function capturePhoto() {
 
 async function loadSupabaseImages() {
     try {
-        // Limpiar contenedor de imágenes
+        console.log('Iniciando carga de imágenes...');
+        
+        // Limpiar contenedor
         const previewContainer = document.getElementById('previewContainer');
         previewContainer.innerHTML = '';
 
@@ -158,27 +160,42 @@ async function loadSupabaseImages() {
             .list();
 
         if (error) {
-            console.error('Error al cargar imágenes:', error);
+            console.error('Error listando archivos:', error);
             return;
         }
 
-        // Ordenar por fecha más reciente
-        const sortedFiles = data.sort((a, b) => 
-            new Date(b.created_at) - new Date(a.created_at)
-        );
+        console.log('Archivos encontrados:', data);
 
         // Mostrar cada imagen
-        for (const file of sortedFiles) {
+        for (const file of data) {
             const { data: { publicUrl } } = supabase
                 .storage
                 .from('photos')
                 .getPublicUrl(file.name);
 
-            const timestamp = new Date(file.created_at);
-            showPreview(publicUrl, timestamp, file.name);
+            console.log('URL de imagen:', publicUrl);
+
+            // Crear elementos
+            const fileDiv = document.createElement('div');
+            fileDiv.className = 'file-preview';
+            
+            const img = document.createElement('img');
+            img.src = publicUrl;
+            img.alt = file.name;
+            
+            // Agregar evento click para lightbox
+            img.onclick = () => {
+                const lightbox = document.getElementById('lightbox');
+                const lightboxImg = document.getElementById('lightbox-img');
+                lightboxImg.src = publicUrl;
+                lightbox.style.display = 'flex';
+            };
+            
+            fileDiv.appendChild(img);
+            previewContainer.appendChild(fileDiv);
         }
     } catch (error) {
-        console.error('Error loading images:', error);
+        console.error('Error cargando imágenes:', error);
     }
 }
 

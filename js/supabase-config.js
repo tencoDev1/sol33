@@ -5,12 +5,6 @@ const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
-export async function signInAnonymously() {
-    const { data, error } = await supabase.auth.signInAnonymously();
-    if (error) throw error;
-    return data;
-}
-
 /* filepath: h:\Trabajo\Paginas\Sol2\file-uploader\js\main.js */
 import { supabase, signInAnonymously } from './supabase-config.js';
 
