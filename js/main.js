@@ -1,6 +1,6 @@
-import { supabase, signInAnonymously } from './supabase-config.js';
+import { supabase, signInAnonymously } from './supabase-config.js'
 
-let currentFacingMode = 'environment'; // Cambiado de 'user' a 'environment'
+let currentFacingMode = 'environment'; // 'user' para frontal, 'environment' para trasera
 let currentStream = null;
 
 async function initCamera() {
@@ -29,6 +29,8 @@ async function initCamera() {
             // Si no se encuentra, intentar con facingMode
             constraints = { video: { facingMode: { ideal: 'environment' } } };
         }
+        // Intentar abrir la cámara según el modo actual
+        constraints = { video: { facingMode: { ideal: currentFacingMode } } };
 
         currentStream = await navigator.mediaDevices.getUserMedia(constraints);
 
@@ -145,69 +147,36 @@ async function capturePhoto() {
     }
 }
 
+// Añadir esta función
 async function loadSupabaseImages() {
     try {
-        console.log('Iniciando carga de imágenes...');
-        
-        // Limpiar contenedor
-        const previewContainer = document.getElementById('previewContainer');
-        previewContainer.innerHTML = '';
-
-        // Obtener lista de archivos
         const { data, error } = await supabase
             .storage
             .from('photos')
             .list();
 
-        if (error) {
-            console.error('Error listando archivos:', error);
-            return;
-        }
+        if (error) throw error;
 
-        console.log('Archivos encontrados:', data);
-
-        // Mostrar cada imagen
         for (const file of data) {
             const { data: { publicUrl } } = supabase
                 .storage
                 .from('photos')
                 .getPublicUrl(file.name);
 
-            console.log('URL de imagen:', publicUrl);
-
-            // Crear elementos
-            const fileDiv = document.createElement('div');
-            fileDiv.className = 'file-preview';
-            
-            const img = document.createElement('img');
-            img.src = publicUrl;
-            img.alt = file.name;
-            
-            // Agregar evento click para lightbox
-            img.onclick = () => {
-                const lightbox = document.getElementById('lightbox');
-                const lightboxImg = document.getElementById('lightbox-img');
-                lightboxImg.src = publicUrl;
-                lightbox.style.display = 'flex';
-            };
-            
-            fileDiv.appendChild(img);
-            previewContainer.appendChild(fileDiv);
+            const timestamp = new Date(file.created_at);
+            showPreview(publicUrl, timestamp, file.name);
         }
     } catch (error) {
-        console.error('Error cargando imágenes:', error);
+        console.error('Error loading images:', error);
     }
 }
 
-// Función para mostrar preview
 function showPreview(publicUrl, timestamp, fileName) {
     const fileDiv = document.createElement('div');
     fileDiv.className = 'file-preview';
     
     const img = document.createElement('img');
     img.src = publicUrl;
-    img.alt = fileName;
-    img.loading = 'lazy';
     
     // Añadir funcionalidad de lightbox
     img.addEventListener('click', () => {
@@ -217,102 +186,29 @@ function showPreview(publicUrl, timestamp, fileName) {
         lightbox.style.display = 'flex';
     });
     
+    const fileNameDiv = document.createElement('div');
+    fileNameDiv.className = 'file-name';
+    fileNameDiv.textContent = fileName || `Photo_${timestamp.toLocaleDateString()}`;
+    
     const timeInfo = document.createElement('div');
     timeInfo.className = 'timestamp';
-    timeInfo.textContent = timestamp.toLocaleString();
+    timeInfo.textContent = timestamp.toLocaleTimeString();
     
     fileDiv.appendChild(img);
+    fileDiv.appendChild(fileNameDiv);
     fileDiv.appendChild(timeInfo);
     
     const previewContainer = document.getElementById('previewContainer');
     previewContainer.appendChild(fileDiv);
 }
 
-// Inicialización
-document.addEventListener('DOMContentLoaded', async () => {
-    try {
-        await signInAnonymously();
-        await loadSupabaseImages();
-        
-        // Configurar lightbox
-        const lightbox = document.getElementById('lightbox');
-        const closeLightbox = document.querySelector('.close-lightbox');
-        
-        if (closeLightbox) {
-            closeLightbox.addEventListener('click', () => {
-                lightbox.style.display = 'none';
-            });
-        }
-        
-        lightbox?.addEventListener('click', (e) => {
-            if (e.target === lightbox) {
-                lightbox.style.display = 'none';
-            }
-        });
-
-        // Configurar botón de captura
-        const captureBtn = document.getElementById('captureBtn');
-        if (captureBtn) {
-            captureBtn.addEventListener('click', capturePhoto);
-        }
-    } catch (error) {
-        console.error('Error de inicialización:', error);
-    }
+// Inicializar cuando el documento esté listo
+document.addEventListener('DOMContentLoaded', () => {
+    loadSupabaseImages();
+    setupEventListeners();
 });
 
-// Función para cargar imágenes de Supabase
-async function loadImages() {
-    try {
-        console.log('Loading images from Supabase...');
-        const previewContainer = document.getElementById('previewContainer');
-        previewContainer.innerHTML = '';
-
-        const { data, error } = await supabase
-            .storage
-            .from('photos')
-            .list();
-
-        if (error) throw error;
-
-        console.log('Found images:', data);
-
-        for (const file of data) {
-            const { data: { publicUrl } } = supabase
-                .storage
-                .from('photos')
-                .getPublicUrl(file.name);
-
-            console.log('Image URL:', publicUrl);
-            createImagePreview(publicUrl, file.name);
-        }
-    } catch (error) {
-        console.error('Error loading images:', error);
-    }
-}
-
-function createImagePreview(url, fileName) {
-    const div = document.createElement('div');
-    div.className = 'file-preview';
-    
-    const img = document.createElement('img');
-    img.src = url;
-    img.alt = fileName;
-    
-    img.onclick = () => {
-        const lightbox = document.getElementById('lightbox');
-        const lightboxImg = document.getElementById('lightbox-img');
-        lightboxImg.src = url;
-        lightbox.style.display = 'flex';
-    };
-    
-    div.appendChild(img);
-    document.getElementById('previewContainer').appendChild(div);
-}
-
-// Initialize
-document.addEventListener('DOMContentLoaded', loadImages);
-
-// Lightbox events
+// Eventos del lightbox
 document.querySelector('.close-lightbox')?.addEventListener('click', () => {
     document.getElementById('lightbox').style.display = 'none';
 });
@@ -322,3 +218,45 @@ document.getElementById('lightbox')?.addEventListener('click', (e) => {
         e.target.style.display = 'none';
     }
 });
+
+function setupEventListeners() {
+    // Configurar botón de toggle cámara
+    const toggleCamera = document.getElementById('toggleCamera');
+    const cameraInterface = document.getElementById('cameraInterface');
+    
+    if (toggleCamera && cameraInterface) {
+        toggleCamera.addEventListener('click', async () => {
+            try {
+                if (cameraInterface.style.display === 'none') {
+                    await initCamera();
+                    cameraInterface.style.display = 'block';
+                    toggleCamera.textContent = '🎥 Disable Camera';
+                } else {
+                    if (currentStream) {
+                        currentStream.getTracks().forEach(track => track.stop());
+                    }
+                    cameraInterface.style.display = 'none';
+                    toggleCamera.textContent = '📸 Enable Camera';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                handleCameraError(error);
+            }
+        });
+    }
+
+    // Botón para cambiar cámara
+    const switchBtn = document.getElementById('switchCameraBtn');
+    if (switchBtn) {
+        switchBtn.addEventListener('click', async () => {
+            currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+            await initCamera();
+        });
+    }
+
+    // Configurar botón de captura
+    const captureBtn = document.getElementById('captureBtn');
+    if (captureBtn) {
+        captureBtn.addEventListener('click', capturePhoto);
+    }
+}
