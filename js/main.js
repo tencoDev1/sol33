@@ -13,33 +13,23 @@ async function initCamera() {
             currentStream.getTracks().forEach(track => track.stop());
         }
 
-        // Buscar la cámara trasera por deviceId si es posible
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const videoDevices = devices.filter(device => device.kind === 'videoinput');
-        let backCamera = videoDevices.find(device =>
-            device.label.toLowerCase().includes('back') ||
-            device.label.toLowerCase().includes('trasera') ||
-            device.label.toLowerCase().includes('environment')
-        );
+        // Usar facingMode para pedir la cámara trasera
+        const constraints = {
+            video: {
+                facingMode: { ideal: "environment" }, // Esto fuerza la trasera
+                width: { ideal: 1920 },
+                height: { ideal: 1080 }
+            }
+        };
 
-        let constraints;
-        if (backCamera) {
-            constraints = { video: { deviceId: { exact: backCamera.deviceId } } };
-        } else {
-            // Si no se encuentra, intentar con facingMode
-            constraints = { video: { facingMode: { ideal: 'environment' } } };
-        }
-        // Intentar abrir la cámara según el modo actual
-        constraints = { video: { facingMode: { ideal: currentFacingMode } } };
-
-        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-
-        video.srcObject = currentStream;
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        currentStream = stream;
+        video.srcObject = stream;
         await video.play();
         captureBtn.disabled = false;
 
     } catch (err) {
-        console.error('Error final al iniciar cámara:', err);
+        console.error('Error al iniciar cámara:', err);
         handleCameraError(err);
     }
 }
